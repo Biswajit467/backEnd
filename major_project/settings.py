@@ -78,13 +78,14 @@ WSGI_APPLICATION = 'major_project.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.mysql',
-        'NAME': 'blog',
-        'USER': 'root',
-        'PASSWORD': 'Hrushi@1234#',
-        'HOST':'127.0.0.1',
-        'PORT':'3306',
+        'NAME': 'campus_canvas_main', 
+        'USER': 'root',  
+        'PASSWORD': 'Hrushi@1234#', 
+        'HOST': 'localhost', 
+        'PORT': '3306', 
     }
 }
+
 
 
 # Password validation
