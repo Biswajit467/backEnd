@@ -4,9 +4,12 @@ from django.db import models
 
 class Users(models.Model):
     id = models.AutoField(primary_key=True)
-    user_name = models.CharField(max_length=255, unique=True)
+    student_id = models.CharField(max_length=255, unique=True)
     password = models.CharField(max_length=255)
     email = models.EmailField(unique=True)
+    name = models.CharField(max_length=200) 
+    sem = models.IntegerField() 
+    admin = models.BooleanField(default=False) 
 
     class Meta:
         db_table = 'users'  # Specify the table name explicitly

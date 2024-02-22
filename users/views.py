@@ -9,8 +9,12 @@ from django.db import connection
 from django.contrib.auth.hashers import check_password
 import jwt
 from rest_framework.decorators import api_view
+import logging
+
 
 # Create your views here.
+
+logger = logging.getLogger(__name__)
 
 
 def index(request):
@@ -36,35 +40,81 @@ def check_db_connection(request):
         return JsonResponse({'status': 'Database connection failed', 'error': str(e)}, status=500)
 
 
+
 @api_view(['POST'])
 @csrf_exempt
-def register(request):
-    data = json.loads(request.body)
-    user_name = data.get('user_name')
-    email = data.get('email')
-    password = data.get('password')
+def create_admin(request):
+    print("request body of create user",request.body)
+    try:
+        data = json.loads(request.body.decode('utf-8'))
+        student_id = data.get('student_id')
+        email = data.get('email')
+        password = data.get('password')
+        name = data.get('name')
+        sem = data.get('sem')
+        admin = data.get('admin', True)
 
-    print(user_name, email, password)
-    # Check if the user already exists
-    if Users.objects.filter(user_name=user_name).exists() or Users.objects.filter(email=email).exists():
-        return JsonResponse({'error': 'User already exists!'}, status=409)
+        print(student_id, email, password, name, sem, admin)
 
-        # Create a new user
-    user = Users(user_name=user_name, email=email,
-                 password=make_password(password))
-    user.save()
+        if not all([student_id, email, password, name, sem]):
+            return JsonResponse({'error': 'Missing required fields'}, status=400)
 
-    return JsonResponse({'message': 'User has been created.'}, status=200)
+        if Users.objects.filter(student_id=student_id).exists() or Users.objects.filter(email=email).exists():
+            return JsonResponse({'error': 'User already exists!'}, status=409)
+
+        user = Users(student_id=student_id, email=email,
+                     password=make_password(password), name=name, sem=sem, admin=admin)
+        user.save()
+
+        return JsonResponse({'message': 'User has been created.'}, status=200)
+
+    except Exception as e:
+        logger.exception("Error creating user: %s", e)
+        return JsonResponse({'error': 'Internal Server Error'}, status=500)
+
+
+
+@api_view(['POST'])
+@csrf_exempt
+def create_user(request):
+    # print("request body of create user",request.body)
+    try:
+        data = json.loads(request.body.decode('utf-8'))
+        student_id = data.get('student_id')
+        email = data.get('email')
+        password = data.get('password')
+        name = data.get('name')
+        sem = data.get('sem')
+        admin = data.get('admin', False)
+
+        print(student_id, email, password, name, sem, admin)
+
+        if not all([student_id, email, password, name, sem]):
+            return JsonResponse({'error': 'Missing required fields'}, status=400)
+
+        if Users.objects.filter(student_id=student_id).exists() or Users.objects.filter(email=email).exists():
+            return JsonResponse({'error': 'User already exists!'}, status=409)
+
+        user = Users(student_id=student_id, email=email,
+                     password=make_password(password), name=name, sem=sem, admin=admin)
+        user.save()
+
+        return JsonResponse({'message': 'User has been created.'}, status=200)
+
+    except Exception as e:
+        logger.exception("Error creating user: %s", e)
+        return JsonResponse({'error': 'Internal Server Error'}, status=500)
 
 
 @api_view(['POST'])
 def login(request):
-    user_name = request.POST.get('user_name')
+    print("inside login function")
+    student_id = request.POST.get('student_id')
     password = request.POST.get('password')
-    print(user_name, password)
+    print(student_id, password)
     try:
         # Check if the user exists
-        user = Users.objects.get(user_name=user_name)
+        user = Users.objects.get(student_id=student_id)
     except Users.DoesNotExist:
         return JsonResponse({'error': 'User not found'}, status=404)
 
@@ -76,12 +126,14 @@ def login(request):
     token = jwt.encode({'id': user.id}, 'jwtkey', algorithm='HS256')
     print("this is my jwt token", token)
 
-    return JsonResponse({'token': token, 'user': {'id': user.id, 'user_name': user.user_name},  'message': 'user logged in successfully'}, status=200)
+    return JsonResponse({'token': token, 'user': {'id': user.id, 'student_id': user.student_id},  'message': 'user logged in successfully'}, status=200)
 
 
 @api_view(['POST'])
-@csrf_protect
+# @csrf_protect
+@csrf_exempt
 def logout(request):
+    print("reuest data",request)
     response = JsonResponse({"message": "User has been logged out."})
     response.delete_cookie("access_token", samesite="None", secure=True)
 

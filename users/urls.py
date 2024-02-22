@@ -9,7 +9,8 @@ admin_api = [
 ]
 
 auth_api = [
-    path('register/', views.register, name='register'),
+    path('create-admin/', views.create_admin, name='create_admin'),
+    path('create-user/', views.create_user, name='create_user'),
     path('login/', views.login, name='login'),
     path('logout/', views.logout, name='logout'),
     path('check-db-connection/', views.check_db_connection,
