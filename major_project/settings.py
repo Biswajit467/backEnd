@@ -87,7 +87,7 @@ DATABASES = {
         'ENGINE': 'django.db.backends.mysql',
         'NAME': 'campus_canvas_main', 
         'USER': 'root',  
-        'PASSWORD': 'Hrushi@1234#', 
+        'PASSWORD': 'biswajit123456789', 
         'HOST': 'localhost', 
         'PORT': '3306', 
     }
