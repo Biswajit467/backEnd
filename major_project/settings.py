@@ -27,7 +27,7 @@ DEBUG = True
 
 ALLOWED_HOSTS = ['localhost', '127.0.0.1','*']
 
-
+CORS_ALLOW_CREDENTIALS = True
 CORS_ORIGIN_WHITELIST = [
     'http://localhost:3000',
 ]
@@ -87,7 +87,7 @@ DATABASES = {
         'ENGINE': 'django.db.backends.mysql',
         'NAME': 'campus_canvas_main', 
         'USER': 'root',  
-        'PASSWORD': 'Hrushi@1234#', 
+        'PASSWORD': 'biswajit123456789', 
         'HOST': 'localhost', 
         'PORT': '3306', 
     }

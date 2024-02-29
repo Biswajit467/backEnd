@@ -109,9 +109,10 @@ def create_user(request):
 @api_view(['POST'])
 def login(request):
     print("inside login function")
+    print("this is user request data",request)
     student_id = request.POST.get('student_id')
     password = request.POST.get('password')
-    print(student_id, password)
+    print("this is login request data",student_id, password)
     try:
         # Check if the user exists
         user = Users.objects.get(student_id=student_id)
@@ -125,8 +126,18 @@ def login(request):
     # Generate JWT token
     token = jwt.encode({'id': user.id}, 'jwtkey', algorithm='HS256')
     print("this is my jwt token", token)
+    
+    # return JsonResponse({'token': token, 'user': {'id': user.id, 'student_id': user.student_id},  'message': 'user logged in successfully'}, status=200)
+    
+    
+    #  # Add the token to the response as a cookie
+    response = JsonResponse({'user': {'id': user.id, 'student_id': user.student_id}, 'message': 'user logged in successfully'}, status=200)
 
-    return JsonResponse({'token': token, 'user': {'id': user.id, 'student_id': user.student_id},  'message': 'user logged in successfully'}, status=200)
+    response.set_cookie('student_id_token', token, httponly=True)
+
+    return response
+    
+
 
 
 @api_view(['POST'])
@@ -135,6 +146,7 @@ def login(request):
 def logout(request):
     print("reuest data",request)
     response = JsonResponse({"message": "User has been logged out."})
+    print(response)
     response.delete_cookie("access_token", samesite="None", secure=True)
 
     print("cookie has been cleared")
