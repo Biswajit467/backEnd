@@ -18,7 +18,8 @@ auth_api = [
 ]
 
 updation_api =[
-    path('user/update-personal-info/<int:pk>/' , views.update_personal_info , name ='update_personal_info')
+    path('user/update-personal-info/<int:pk>/' , views.update_personal_info , name ='update_personal_info'),
+    path('admins/update-student-info/<int:pk>/' , views.update_student_info , name ='update_student_info')
 ]
 
 urlpatterns = user_api + admin_api + auth_api + updation_api

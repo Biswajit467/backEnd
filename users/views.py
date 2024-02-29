@@ -9,7 +9,7 @@ from django.db import connection
 from django.contrib.auth.hashers import check_password
 import jwt
 from rest_framework.decorators import api_view
-from .serializers import UserUpdateSerializer
+from .serializers import UserUpdateSerializer , AdminUpdateSerializer
 from rest_framework.response import Response
 from rest_framework import status
 from rest_framework import generics
@@ -135,7 +135,7 @@ def login(request):
     
     
     #  # Add the token to the response as a cookie
-    response = JsonResponse({'user': {'id': user.id, 'student_id': user.student_id,'name': user.name,'sem': user.sem, 'email':user.email}, 'message': 'user logged in successfully'}, status=200)
+    response = JsonResponse({'user': {'id': user.id, 'student_id': user.student_id,'name': user.name,'sem': user.sem, 'img':user.img,'email':user.email}, 'message': 'user logged in successfully'}, status=200)
 
     response.set_cookie('student_id_token', token, httponly=True)
 
@@ -178,5 +178,25 @@ def update_personal_info(request, pk):
         return Response({'error': 'Only PATCH method is allowed'}, status=status.HTTP_405_METHOD_NOT_ALLOWED)
 
 
-# @api_view(['POST'])
-# def update_student_info(request):
+@csrf_exempt
+@api_view(['PATCH'])
+def update_student_info(request, pk):
+    print('inside update student info')
+    try:
+        user = Users.objects.get(pk=pk)
+    except Users.DoesNotExist:
+        return Response({'error': 'User not found'}, status=status.HTTP_404_NOT_FOUND)
+
+    if request.method == 'PATCH':
+        data = request.data.copy()  # Make a copy of request data to avoid modifying the original data
+        password = data.get('password')
+        if password:
+            data['password'] = make_password(password)  # Encrypt the password
+        serializer = AdminUpdateSerializer(user, data=data, partial=True)
+        if serializer.is_valid():
+            print('inside serielizer valid')
+            serializer.save()
+            return Response(serializer.data)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    else:
+        return Response({'error': 'Only PATCH method is allowed'}, status=status.HTTP_405_METHOD_NOT_ALLOWED)
