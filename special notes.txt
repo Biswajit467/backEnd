@@ -1,0 +1,1 @@
+we are using http only to true which make it more secure so that any client side script cant make  XSS attacks and prevent  from accessing the cookie's contents

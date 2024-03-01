@@ -1,0 +1,16 @@
+================================================authorization apis===================================================
+create_user
+create_admin
+login => here i need to check if a user is admin or not and then i should let some one login and
+logout
+update_student_info(admin) => here admin can change students  , evertything including student id also
+update_personal_info(student) => student can update password  , email , name , sem 
+delete_student(admin)
+
+
+==================================================functionality apis==================================================
+notice_board(admin can make posts)
+leader_board(top student will be displayed here comparing upon there data)
+
+
+===================================================post apis==========================================================

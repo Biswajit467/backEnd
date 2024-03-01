@@ -1,0 +1,31 @@
+cloudinary => for storing images in cloud
+py -m pip install Django
+django-admin startproject major-project
+python manage.py runserver
+pip install virtualenv
+virtualenv venv
+.\vnev\Scripts\activate
+pip install -r requirements.txt => this will install all the dependencies
+
+pip freeze => will show all the packages that we have installed
+pip freeze > requirements.txt => create a file named requirements.txt for noteing down all the requirements we have
+
+
+to create a new app => python manage.py startapp <your app name> => here we have 2 of them admin and user
+
+
+
+
+
+db will be configured in settings.py
+for now we dont need a lot of apps we need only one app and there inside urls.py we can define urls for separate separate fucntions for admin and users and separate one for login
+
+
+migrations in django=>
+when you define somthing in your models files then you need to perform a migration you dont need to define that in your db it will automatically create it  
+ python manage.py makemigrations 
+ python manage.py migrate
+
+but if you have already things in your db and you just added that inyou django model then you need to make a fake migration that
+python manage.py makemigrations 
+python manage.py migrate --fake
