@@ -10,6 +10,9 @@ from django.contrib.auth.hashers import check_password
 import jwt
 from rest_framework.decorators import api_view
 import logging
+from rest_framework.response import Response
+from rest_framework import status
+from .models import Posts
 
 
 # Create your views here.
@@ -151,3 +154,41 @@ def logout(request):
 
     print("cookie has been cleared")
     return response
+
+
+
+
+
+# post apis
+
+
+
+@api_view(['POST'])
+def add_post(request):
+    token = request.data.get('token')
+    if not token:
+        return Response({"error": "Not authenticated!"}, status=status.HTTP_401_UNAUTHORIZED)
+
+    try:
+        decoded_token = jwt.decode(token, 'jwtkey', algorithms=['HS256'])
+    except jwt.ExpiredSignatureError:
+        return Response({"error": "Token is expired!"}, status=status.HTTP_403_FORBIDDEN)
+    except jwt.InvalidTokenError:
+        return Response({"error": "Token is not valid!"}, status=status.HTTP_403_FORBIDDEN)
+
+    title = request.data.get('title')
+    desc = request.data.get('desc')
+    img = request.data.get('img')
+    cat = request.data.get('cat')
+    date = request.data.get('date')
+    phone = request.data.get('phone')
+
+    if not all([title, desc, img, cat, date, phone]):
+        return Response({"error": "Missing required fields!"}, status=status.HTTP_400_BAD_REQUEST)
+
+    try:
+        post = Post.objects.create(title=title, desc=desc, img=img, cat=cat, date=date, uid=decoded_token['id'], phone=phone)
+        return Response({"message": "Post has been created."}, status=status.HTTP_201_CREATED)
+    except Exception as e:
+        return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
