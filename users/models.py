@@ -9,6 +9,7 @@ class Users(models.Model):
     email = models.EmailField(unique=True)
     name = models.CharField(max_length=200) 
     sem = models.IntegerField() 
+    img = models.CharField(max_length=1000 , null=True) 
     admin = models.BooleanField(default=False) 
 
     class Meta:

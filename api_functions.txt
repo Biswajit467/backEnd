@@ -1,0 +1,6 @@
+login =>  
+here we need to pass a cookie or token that will get stored inside the browser and then use that cookie to identify user when ever calling any api 
+update_student_info(admin) =>
+here admin can change students  , evertything including student id also
+update_personal_info(student) =>
+student can update password  , email , name , sem 
