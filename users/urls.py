@@ -12,6 +12,7 @@ auth_api = [
     path('create-admin/', views.create_admin, name='create_admin'),
     path('create-user/', views.create_user, name='create_user'),
     path('delete-user/<str:student_id>/', views.delete_user, name='delete_user'),
+    path('delete-old-users/', views.delete_old_users, name='delete-old-users'),
     path('login/', views.login, name='login'),
     path('logout/', views.logout, name='logout'),
     path('check-db-connection/', views.check_db_connection,

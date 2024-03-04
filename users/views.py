@@ -13,7 +13,8 @@ from .serializers import UserUpdateSerializer , AdminUpdateSerializer
 from rest_framework.response import Response
 from rest_framework import status
 from rest_framework import generics
-from datetime import datetime
+from datetime import datetime, timedelta
+from django.utils import timezone
 import logging
 
 
@@ -222,4 +223,21 @@ def delete_user(request, student_id):
     user.delete()
 
     return Response({'message': 'User has been deleted'}, status=status.HTTP_204_NO_CONTENT)
+
+@api_view(['DELETE'])
+@csrf_exempt
+def delete_old_users(request):
+    try:
+        # Calculate the date 8 years ago
+        eight_years_ago = timezone.now() - timedelta(days=8*365)
+
+        # Query for users whose creation time is 8 years older than the current date
+        old_users = Users.objects.filter(created_at__lte=eight_years_ago)
+
+        # Delete the retrieved users from the database
+        old_users.delete()
+
+        return Response({'message': 'Old users have been deleted'}, status=status.HTTP_204_NO_CONTENT)
+    except Exception as e:
+        return Response({'error': 'Internal Server Error'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
    
