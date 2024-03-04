@@ -9,4 +9,4 @@ class UserUpdateSerializer(serializers.ModelSerializer):
 class AdminUpdateSerializer(serializers.ModelSerializer):
     class Meta:
         model = Users
-        fields = ['student_id','name', 'email', 'password', 'img' ] 
+        fields = ['student_id','name', 'email', 'password', 'img' , 'branch' , 'registration_number' , 'ban' ] 
