@@ -9,8 +9,37 @@ delete_student(admin)
 
 
 ==================================================functionality apis==================================================
-notice_board(admin can make posts)
-leader_board(top student will be displayed here comparing upon there data)
 
+
+semister_update => admin can update semister of all students at a time and
+student_info => when ahe goes inside a specific students data he should get all his infos
+
+
+
+====================================================search apis====================================================================================
+search_api => admin can search any student by his name of student_id
+search_api(student) =>    can search any post , teacher info , notification
 
 ===================================================post apis==========================================================
+create 
+update 
+delete
+fetch_post 
+fetch_all_post
+
+==================================================notice board apis==========================================================
+create 
+update 
+delete
+notice_board(admin  post notices)
+notice_board_fetch(notice board data for students) => students can ses all notices
+
+====================================================leader board api ==================================================
+
+score_input (admin) => admin need to input scores of student across various fields of
+post_mark_calculation => depending on post category of user his marks will also increase
+
+leader_board(top student will be displayed here comparing upon there data) [function may be]
+leader_board(student) => fetch data of leader board for students
+
+=======================================================
