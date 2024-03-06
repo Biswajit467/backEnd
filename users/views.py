@@ -9,7 +9,7 @@ from django.db import connection
 from django.contrib.auth.hashers import check_password
 import jwt
 from rest_framework.decorators import api_view
-from .serializers import UserUpdateSerializer , AdminUpdateSerializer
+from .serializers import UserUpdateSerializer, AdminUpdateSerializer, PostsSerializer
 from rest_framework.response import Response
 from rest_framework import status
 from rest_framework import generics
@@ -17,6 +17,7 @@ import logging
 from rest_framework.response import Response
 from rest_framework import status
 from .models import Posts
+from django.shortcuts import get_object_or_404
 
 
 # Create your views here.
@@ -47,11 +48,10 @@ def check_db_connection(request):
         return JsonResponse({'status': 'Database connection failed', 'error': str(e)}, status=500)
 
 
-
 @api_view(['POST'])
 @csrf_exempt
 def create_admin(request):
-    print("request body of create user",request.body)
+    print("request body of create user", request.body)
     try:
         data = json.loads(request.body.decode('utf-8'))
         student_id = data.get('student_id')
@@ -78,7 +78,6 @@ def create_admin(request):
     except Exception as e:
         logger.exception("Error creating user: %s", e)
         return JsonResponse({'error': 'Internal Server Error'}, status=500)
-
 
 
 @api_view(['POST'])
@@ -116,10 +115,10 @@ def create_user(request):
 @api_view(['POST'])
 def login(request):
     print("inside login function")
-    print("this is user request data",request)
+    print("this is user request data", request)
     student_id = request.POST.get('student_id')
     password = request.POST.get('password')
-    print("this is login request data",student_id, password)
+    print("this is login request data", student_id, password)
     try:
         # Check if the user exists
         user = Users.objects.get(student_id=student_id)
@@ -133,34 +132,30 @@ def login(request):
     # Generate JWT token
     token = jwt.encode({'id': user.id}, 'jwtkey', algorithm='HS256')
     print("this is my jwt token", token)
-    
-    # return JsonResponse({'token': token, 'user': {'id': user.id, 'student_id': user.student_id},  'message': 'user logged in successfully'}, status=200)
-    
-    
+
+    return JsonResponse({'student_id_token': token, 'user': {'id': user.id, 'student_id': user.student_id},  'message': 'user logged in successfully'}, status=200)
+
     #  # Add the token to the response as a cookie
-    response = JsonResponse({'user': {'id': user.id, 'student_id': user.student_id,'name': user.name,'sem': user.sem, 'img':user.img,'email':user.email}, 'message': 'user logged in successfully'}, status=200)
+    # response = JsonResponse({'user': {'id': user.id, 'student_id': user.student_id, 'name': user.name, 'sem': user.sem,
+    #                         'img': user.img, 'email': user.email}, 'message': 'user logged in successfully'}, status=200)
 
-    response.set_cookie('student_id_token', token, httponly=True)
+    # response.set_cookie('student_id_token', token)
+    # # response['Authorization'] = f'Bearer {token}'
 
-    return response
-    
-
+    # return response
 
 
 @api_view(['POST'])
 # @csrf_protect
 @csrf_exempt
 def logout(request):
-    print("reuest data",request)
+    print("reuest data", request)
     response = JsonResponse({"message": "User has been logged out."})
     print(response)
     response.delete_cookie("access_token", samesite="None", secure=True)
 
     print("cookie has been cleared")
     return response
-
-
-
 
 
 @csrf_exempt
@@ -172,7 +167,8 @@ def update_personal_info(request, pk):
         return Response({'error': 'User not found'}, status=status.HTTP_404_NOT_FOUND)
 
     if request.method == 'PATCH':
-        data = request.data.copy()  # Make a copy of request data to avoid modifying the original data
+        # Make a copy of request data to avoid modifying the original data
+        data = request.data.copy()
         password = data.get('password')
         if password:
             data['password'] = make_password(password)  # Encrypt the password
@@ -195,7 +191,8 @@ def update_student_info(request, pk):
         return Response({'error': 'User not found'}, status=status.HTTP_404_NOT_FOUND)
 
     if request.method == 'PATCH':
-        data = request.data.copy()  # Make a copy of request data to avoid modifying the original data
+        # Make a copy of request data to avoid modifying the original data
+        data = request.data.copy()
         password = data.get('password')
         if password:
             data['password'] = make_password(password)  # Encrypt the password
@@ -207,35 +204,36 @@ def update_student_info(request, pk):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     else:
         return Response({'error': 'Only PATCH method is allowed'}, status=status.HTTP_405_METHOD_NOT_ALLOWED)
-    
-    
+
     # post apis
+
 
 @api_view(['POST'])
 def add_post(request):
-    token = request.data.get('token')
+    # print('This is req.body',request.body)
+    # print('This is req.data',request.data)
+    print("request headers", request.headers)
+    token = request.headers.get('Authorization')
+
+    print("This is token ", token)
+
     if not token:
         return Response({"error": "Not authenticated!"}, status=status.HTTP_401_UNAUTHORIZED)
 
+
     try:
         decoded_token = jwt.decode(token, 'jwtkey', algorithms=['HS256'])
+        print("This is decoded-token", decoded_token)
+        user_instance = get_object_or_404(Users, id=decoded_token['id'])
+        print("This is user instance", user_instance)
+
     except jwt.ExpiredSignatureError:
         return Response({"error": "Token is expired!"}, status=status.HTTP_403_FORBIDDEN)
     except jwt.InvalidTokenError:
         return Response({"error": "Token is not valid!"}, status=status.HTTP_403_FORBIDDEN)
 
-    title = request.data.get('title')
-    desc = request.data.get('desc')
-    img = request.data.get('img')
-    cat = request.data.get('cat')
-    date = request.data.get('date')
-    phone = request.data.get('phone')
-
-    if not all([title, desc, img, cat, date, phone]):
-        return Response({"error": "Missing required fields!"}, status=status.HTTP_400_BAD_REQUEST)
-
-    try:
-        post = Post.objects.create(title=title, desc=desc, img=img, cat=cat, date=date, uid=decoded_token['id'], phone=phone)
-        return Response({"message": "Post has been created."}, status=status.HTTP_201_CREATED)
-    except Exception as e:
-        return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    serializer = PostsSerializer(data=request.data)
+    if serializer.is_valid():
+        serializer.save(uid=user_instance)  # Assign uid from decoded token
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
