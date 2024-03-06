@@ -30,3 +30,12 @@ class Posts(models.Model):
     
     class Meta:
         db_table = 'posts'
+
+class Notification(models.Model):
+    id = models.AutoField(primary_key=True)
+    notification = models.CharField(max_length=10000)
+    created_at = models.DateTimeField(auto_now_add=True)
+    user_id = models.ForeignKey("Users", on_delete=models.CASCADE)
+
+    class Meta:
+        db_table = 'notification'

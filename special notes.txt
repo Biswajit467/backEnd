@@ -3,3 +3,6 @@ we are using http only to true which make it more secure so that any client side
 what will happen if i need to see data of an already passout studend?
 yaa , so main thing is how do we define a student if he is from a passed out batch or not by his batch code .... for example my batch code is 2020 that is i joined in 2020 which is show cased in my redgno(2001335012) or roll no (20cse26) so if let today is i am living in 2025 instead of 2023 then most probably i have passedout or else if i have any back then i am still a student ........ in this way we are calculating a student is not  and after 4 years if you are unable to pass out then we are not eligible to get the certificate so we are deleting a student's data after 4 years auto matically 
 it totally depends upon the admin he has not deleted the data of the student then we can check his data
+
+we are using one-to-one relationship with student to his scores  and using one-to-many relation with student to his posts
+we are also using one to many relation with admin to his notfication data

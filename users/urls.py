@@ -24,4 +24,9 @@ updation_api =[
     path('admins/update-student-info/<int:pk>/' , views.update_student_info , name ='update_student_info')
 ]
 
-urlpatterns = user_api + admin_api + auth_api + updation_api
+notfication_api = [
+        path('create-notification/', views.create_notification, name='create-notification'),
+
+]
+
+urlpatterns = user_api + admin_api + auth_api + updation_api + notfication_api
