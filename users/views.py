@@ -9,10 +9,12 @@ from django.db import connection
 from django.contrib.auth.hashers import check_password
 import jwt
 from rest_framework.decorators import api_view
-from .serializers import UserUpdateSerializer, AdminUpdateSerializer, PostsSerializer
+from .serializers import UserUpdateSerializer, AdminUpdateSerializer, PostsSerializer , NotificationSerializer
 from rest_framework.response import Response
 from rest_framework import status
 from rest_framework import generics
+from datetime import datetime, timedelta
+from django.utils import timezone
 import logging
 from rest_framework.response import Response
 from rest_framework import status
@@ -83,7 +85,6 @@ def create_admin(request):
 @api_view(['POST'])
 @csrf_exempt
 def create_user(request):
-    # print("request body of create user",request.body)
     try:
         data = json.loads(request.body.decode('utf-8'))
         student_id = data.get('student_id')
@@ -92,17 +93,21 @@ def create_user(request):
         name = data.get('name')
         sem = data.get('sem')
         admin = data.get('admin', False)
+        registration_number = data.get('registration_number', '0000000000')  # Default value added
+        branch = data.get('branch', 'cse')  # Default value added
+        
+        # Adding current datetime for created_at field
+        created_at = datetime.now()
 
-        print(student_id, email, password, name, sem, admin)
-
-        if not all([student_id, email, password, name, sem]):
+        if not all([student_id, email, password, name, sem]):  
             return JsonResponse({'error': 'Missing required fields'}, status=400)
 
         if Users.objects.filter(student_id=student_id).exists() or Users.objects.filter(email=email).exists():
             return JsonResponse({'error': 'User already exists!'}, status=409)
 
         user = Users(student_id=student_id, email=email,
-                     password=make_password(password), name=name, sem=sem, admin=admin)
+                     password=make_password(password), name=name, sem=sem, admin=admin,
+                     registration_number=registration_number, branch=branch, created_at=created_at)  
         user.save()
 
         return JsonResponse({'message': 'User has been created.'}, status=200)
@@ -122,6 +127,7 @@ def login(request):
     try:
         # Check if the user exists
         user = Users.objects.get(student_id=student_id)
+        print("is_banned" , user.ban)
     except Users.DoesNotExist:
         return JsonResponse({'error': 'User not found'}, status=404)
 
@@ -191,19 +197,65 @@ def update_student_info(request, pk):
         return Response({'error': 'User not found'}, status=status.HTTP_404_NOT_FOUND)
 
     if request.method == 'PATCH':
-        # Make a copy of request data to avoid modifying the original data
-        data = request.data.copy()
-        password = data.get('password')
-        if password:
-            data['password'] = make_password(password)  # Encrypt the password
-        serializer = AdminUpdateSerializer(user, data=data, partial=True)
-        if serializer.is_valid():
-            print('inside serielizer valid')
-            serializer.save()
-            return Response(serializer.data)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        try:
+            data = json.loads(request.body.decode('utf-8'))
+            password = data.get('password')
+            if password:
+                data['password'] = make_password(password)  # Encrypt the password
+            serializer = AdminUpdateSerializer(user, data=data, partial=True)
+            if serializer.is_valid():
+                print('inside serializer valid')
+                # Update created_at field
+                serializer.validated_data['created_at'] = datetime.now()
+                serializer.save()
+                return Response({'message': 'User info has been updated.'}, status=status.HTTP_200_OK)
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            logger.exception("Error updating user info: %s", e)
+            return Response({'error': 'Internal Server Error'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
     else:
         return Response({'error': 'Only PATCH method is allowed'}, status=status.HTTP_405_METHOD_NOT_ALLOWED)
+
+@api_view(['DELETE'])
+@csrf_exempt
+def delete_user(request, student_id):
+    try:
+        # Check if the user exists
+        user = Users.objects.get(student_id=student_id)
+    except Users.DoesNotExist:
+        return Response({'error': 'User not found'}, status=status.HTTP_404_NOT_FOUND)
+
+    # Delete the user
+    user.delete()
+
+    return Response({'message': 'User has been deleted'}, status=status.HTTP_204_NO_CONTENT)
+
+@api_view(['DELETE'])
+@csrf_exempt
+def delete_old_users(request):
+    try:
+        # Calculate the date 8 years ago
+        eight_years_ago = timezone.now() - timedelta(days=8*365)
+
+        # Query for users whose creation time is 8 years older than the current date
+        old_users = Users.objects.filter(created_at__lte=eight_years_ago)
+
+        # Delete the retrieved users from the database
+        old_users.delete()
+
+        return Response({'message': 'Old users have been deleted'}, status=status.HTTP_204_NO_CONTENT)
+    except Exception as e:
+        return Response({'error': 'Internal Server Error'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+@api_view(['POST'])
+def create_notification(request):
+    print("inside create notification")
+    serializer = NotificationSerializer(data=request.data)
+    if serializer.is_valid():
+        serializer.save()
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+   
 
     # post apis
 

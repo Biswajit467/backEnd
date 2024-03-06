@@ -9,11 +9,16 @@ class Users(models.Model):
     email = models.EmailField(unique=True)
     name = models.CharField(max_length=200) 
     sem = models.IntegerField() 
-    img = models.CharField(max_length=1000 , null=True) 
+    img = models.CharField(max_length=1000, null=True) 
     admin = models.BooleanField(default=False) 
+    registration_number = models.CharField(max_length=255 , default='0000000000')  
+    branch = models.CharField(max_length=255 , default='cse')  
+    ban = models.BooleanField(default=False)  
+    created_at = models.DateTimeField(auto_now_add=True)  # New field for creation date
 
     class Meta:
-        db_table = 'users'  # Specify the table name explicitly
+        db_table = 'users'
+        
 class Posts(models.Model):
     id = models.AutoField(primary_key=True)
     title = models.CharField(max_length=255 , default='title')
@@ -25,3 +30,12 @@ class Posts(models.Model):
     
     class Meta:
         db_table = 'posts'
+
+class Notification(models.Model):
+    id = models.AutoField(primary_key=True)
+    notification = models.CharField(max_length=10000)
+    created_at = models.DateTimeField(auto_now_add=True)
+    user_id = models.ForeignKey("Users", on_delete=models.CASCADE)
+
+    class Meta:
+        db_table = 'notification'
