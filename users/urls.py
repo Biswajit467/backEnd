@@ -17,6 +17,7 @@ auth_api = [
     path('logout/', views.logout, name='logout'),
     path('check-db-connection/', views.check_db_connection,
          name='check_db_connection'),
+    path('add-post/',views.add_post,name='add_post')
 ]
 
 updation_api =[

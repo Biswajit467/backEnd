@@ -1,6 +1,8 @@
 # serializers.py
 from rest_framework import serializers
 from .models import Users
+from .models import Posts
+
 from .models import Notification
 
 class UserUpdateSerializer(serializers.ModelSerializer):
@@ -15,3 +17,9 @@ class NotificationSerializer(serializers.ModelSerializer):
     class Meta:
         model = Notification
         fields = ['id', 'notification', 'created_at', 'user_id']
+
+
+class PostsSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Posts
+        fields = ['id', 'title', 'img', 'desc', 'date', 'uid', 'category']
