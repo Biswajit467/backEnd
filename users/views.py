@@ -9,7 +9,7 @@ from django.db import connection
 from django.contrib.auth.hashers import check_password
 import jwt
 from rest_framework.decorators import api_view
-from .serializers import UserUpdateSerializer , AdminUpdateSerializer
+from .serializers import UserUpdateSerializer , AdminUpdateSerializer , NotificationSerializer
 from rest_framework.response import Response
 from rest_framework import status
 from rest_framework import generics
@@ -240,4 +240,13 @@ def delete_old_users(request):
         return Response({'message': 'Old users have been deleted'}, status=status.HTTP_204_NO_CONTENT)
     except Exception as e:
         return Response({'error': 'Internal Server Error'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+@api_view(['POST'])
+def create_notification(request):
+    print("inside create notification")
+    serializer = NotificationSerializer(data=request.data)
+    if serializer.is_valid():
+        serializer.save()
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
    
