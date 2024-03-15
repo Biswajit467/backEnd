@@ -29,7 +29,10 @@ ALLOWED_HOSTS = ['localhost', '127.0.0.1','*']
 
 CORS_ALLOW_CREDENTIALS = True
 CORS_ORIGIN_WHITELIST = [
-    'http://localhost:3000',
+    'http://localhost:4000',
+]
+CORS_ALLOWED_ORIGINS = [
+    "http://localhost:4000",
 ]
 
 
@@ -50,12 +53,12 @@ INSTALLED_APPS = [
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
+    'corsheaders.middleware.CorsMiddleware', 
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
-    'corsheaders.middleware.CorsMiddleware'
 ]
 
 ROOT_URLCONF = 'major_project.urls'
@@ -87,7 +90,7 @@ DATABASES = {
         'ENGINE': 'django.db.backends.mysql',
         'NAME': 'campus_canvas_main', 
         'USER': 'root',  
-        'PASSWORD': 'biswajit123456789', 
+        'PASSWORD': 'Hrushi@1234#', 
         'HOST': 'localhost', 
         'PORT': '3306', 
     }
