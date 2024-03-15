@@ -2,7 +2,8 @@ from django.urls import path
 from . import views
 
 user_api = [
-    path('index/', views.index, name='index')
+       path('user/get-user-data/<int:user_id>/', views.get_user_data, name='get_user_data'),
+
 ]
 admin_api = [
     path('admins/', views.admins, name='admins')

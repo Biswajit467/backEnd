@@ -139,7 +139,7 @@ def login(request):
     token = jwt.encode({'id': user.id}, 'jwtkey', algorithm='HS256')
     print("this is my jwt token", token)
 
-    return JsonResponse({'student_id_token': token, 'user': {'id': user.id, 'student_id': user.student_id},  'message': 'user logged in successfully'}, status=200)
+    return JsonResponse({'student_id_token': token, 'user': {'id': user.id, 'student_id': user.student_id , 'is_admin':user.admin ,'is_banned' : user.ban},  'message': 'user logged in successfully'}, status=200)
 
     #  # Add the token to the response as a cookie
     # response = JsonResponse({'user': {'id': user.id, 'student_id': user.student_id, 'name': user.name, 'sem': user.sem,
@@ -372,4 +372,22 @@ def update_scores(request):
     return Response({'message': 'Scores updated successfully'}, status=status.HTTP_200_OK)
 
 
+def get_user_data(request, user_id):
+    print('inside get_user_data')
+    try:
+        user = Users.objects.get(id=user_id)
+        user_data = {
+            'id': user.id,
+            'student_id': user.student_id,
+            'email': user.email,
+            'name': user.name,
+            'sem': user.sem,
+            'img': user.img,
+            'admin': user.admin,
+            'registration_number': user.registration_number,
+            'branch': user.branch,
+        }
+        return JsonResponse({'user': user_data})
+    except Users.DoesNotExist:
+        return JsonResponse({'error': 'User does not exist'}, status=404)
 
