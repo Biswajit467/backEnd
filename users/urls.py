@@ -11,7 +11,7 @@ admin_api = [
 
 auth_api = [
     path('create-admin/', views.create_admin, name='create_admin'),
-    path('create-user/', views.create_user, name='create_user'),
+    path('admins/create-user/', views.create_user, name='create_user'),
     path('delete-user/<str:student_id>/',
          views.delete_user, name='delete_user'),
     path('delete-old-users/', views.delete_old_users, name='delete-old-users'),
@@ -33,14 +33,15 @@ notfication_api = [
     path('get-notifications/', views.get_all_notifications,
          name='get_all_notifications'),
 
-    path('create-notification/', views.create_notification,
+    path('admins/create-notification/', views.create_notification,
          name='create_notification'),
-    path('update-notification/<int:pk>/',
+    path('admins/update-notification/<int:pk>/',
          views.update_notification, name='update_notification'),
 ]
 
 scores_api = [
-    path('update-scores/', views.update_scores, name='update_scores'),
+    path('admins/update-scores/', views.update_scores, name='update_scores'),
+    path('user/get-user-scores/<int:user_id>/<int:semester>/', views.get_user_scores, name='get_user_scores'),
 ]
 
 urlpatterns = user_api + admin_api + auth_api + \

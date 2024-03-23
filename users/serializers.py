@@ -2,6 +2,7 @@
 from rest_framework import serializers
 from .models import Users
 from .models import Posts
+from .models import Scores
 
 from .models import Notification
 
@@ -28,3 +29,8 @@ class PostsSerializer(serializers.ModelSerializer):
     class Meta:
         model = Posts
         fields = ['id', 'title', 'img', 'desc', 'date', 'uid', 'category']
+
+class ScoresSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Scores
+        fields = '__all__'
