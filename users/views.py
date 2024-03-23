@@ -4,7 +4,7 @@ from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt, csrf_protect
 from django.contrib.auth.hashers import make_password
 import json
-from .models import Users
+from .models import Users , Posts , Notification , Scores
 from django.db import connection
 from django.contrib.auth.hashers import check_password
 import jwt
@@ -142,7 +142,7 @@ def login(request):
     token = jwt.encode({'id': user.id}, 'jwtkey', algorithm='HS256')
     print("this is my jwt token", token)
 
-    return JsonResponse({'student_id_token': token, 'user': {'id': user.id, 'student_id': user.student_id},  'message': 'user logged in successfully'}, status=200)
+    return JsonResponse({'student_id_token': token, 'user': {'id': user.id, 'student_id': user.student_id , 'is_admin':user.admin ,'is_banned' : user.ban},  'message': 'user logged in successfully'}, status=200)
 
     #  # Add the token to the response as a cookie
     # response = JsonResponse({'user': {'id': user.id, 'student_id': user.student_id, 'name': user.name, 'sem': user.sem,
@@ -254,16 +254,70 @@ def delete_old_users(request):
         return Response({'error': 'Internal Server Error'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
+@api_view(['GET'])
+def get_all_notifications(request):
+    notifications = Notification.objects.all()
+    serialized_data = []
+
+    for notification in notifications:
+        user_id = notification.user_id.id  # Assuming user_id is the foreign key to Users table
+        try:
+            user = Users.objects.get(id=user_id)
+            user_name = user.name
+        except Users.DoesNotExist:
+            user_name = "Unknown"
+
+        # Serialize notification data along with user name
+        serialized_notification = {
+            'id': notification.id,
+            'notification': notification.notification,
+            'created_at': notification.created_at,
+            'user_id': user_id,
+            'user_name': user_name
+        }
+        serialized_data.append(serialized_notification)
+
+    return Response(serialized_data, status=status.HTTP_200_OK)
+
 @api_view(['POST'])
 def create_notification(request):
     print("inside create notification")
+    token = request.headers.get('Authorization')
+
+    print("This is token ", token)
+
+    if not token:
+        return Response({"error": "Not authenticated!"}, status=status.HTTP_401_UNAUTHORIZED)
+    try:
+        decoded_token = jwt.decode(token, 'jwtkey', algorithms=['HS256'])
+        user_instance = get_object_or_404(Users, id=decoded_token['id'])
+        print( "decode token" , decoded_token , 'user_instance' ,user_instance)
+    except jwt.ExpiredSignatureError:
+        return Response({"error": "Token is expired!"}, status=status.HTTP_403_FORBIDDEN)
+    except jwt.InvalidTokenError:
+        return Response({"error": "Token is not valid!"}, status=status.HTTP_403_FORBIDDEN)
     serializer = NotificationSerializer(data=request.data)
     if serializer.is_valid():
-        serializer.save()
+        serializer.save(user_id=user_instance)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-    # post apis
+@api_view(['PUT'])
+def update_notification(request, pk):
+    try:
+        notification_instance = Notification.objects.get(pk=pk)
+    except Notification.DoesNotExist:
+        return Response({"error": "Notification not found"}, status=status.HTTP_404_NOT_FOUND)
+
+    serializer = NotificationSerializer(notification_instance, data=request.data)
+    if serializer.is_valid():
+        serializer.save()
+        return Response(serializer.data, status=status.HTTP_200_OK)
+    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+   
+
+
 
 
 @api_view(['POST'])
@@ -271,18 +325,12 @@ def add_post(request):
     print("This is add_post api")
     print("This is headers: ", request.headers)
     token = request.headers.get('Authorization')
-
-    print("This is token ", token)
-
     if not token:
         return Response({"error": "Not authenticated!"}, status=status.HTTP_401_UNAUTHORIZED)
 
     try:
         decoded_token = jwt.decode(token, 'jwtkey', algorithms=['HS256'])
-        print("This is decoded-token", decoded_token)
         user_instance = get_object_or_404(Users, id=decoded_token['id'])
-        print("This is user instance", user_instance)
-
     except jwt.ExpiredSignatureError:
         return Response({"error": "Token is expired!"}, status=status.HTTP_403_FORBIDDEN)
     except jwt.InvalidTokenError:
@@ -290,7 +338,7 @@ def add_post(request):
 
     serializer = PostsSerializer(data=request.data)
     if serializer.is_valid():
-        serializer.save(uid=user_instance)  # Assign uid from decoded token
+        serializer.save(uid=user_instance)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
@@ -404,3 +452,61 @@ def delete_post(request, post_id):
 
     post.delete()
     return Response({"message": "Post deleted successfully"}, status=status.HTTP_204_NO_CONTENT)
+
+@api_view(['POST'])
+def update_scores(request):
+    student_id = request.data.get('student_id')
+    semester = request.data.get('semester')
+    tech = request.data.get('tech', 0)
+    etc = request.data.get('etc', 0)
+    art = request.data.get('art', 0)
+    sports = request.data.get('sports', 0)
+    academic = request.data.get('academic', 0)
+
+    if not student_id or not semester:
+        return Response({'error': 'student_id and semester are required'}, status=status.HTTP_400_BAD_REQUEST)
+
+    try:
+        user = Users.objects.get(id=student_id)
+        scores_instances = Scores.objects.filter(student=user, sem__gte=semester)
+    except Users.DoesNotExist:
+        return Response({'error': 'User not found'}, status=status.HTTP_404_NOT_FOUND)
+
+    if not scores_instances.exists():
+        return Response({'error': 'Scores instances not found for the provided semester'}, status=status.HTTP_404_NOT_FOUND)
+
+    # Update score values for all relevant instances
+    for score_instance in scores_instances:
+        score_instance.tech += tech
+        score_instance.etc += etc
+        score_instance.art += art
+        score_instance.sports += sports
+        score_instance.academic += academic
+
+        # Calculate overall score
+        overall = tech + etc + art + sports + academic
+        score_instance.overall = overall
+        score_instance.save()
+
+    return Response({'message': 'Scores updated successfully'}, status=status.HTTP_200_OK)
+
+
+def get_user_data(request, user_id):
+    print('inside get_user_data')
+    try:
+        user = Users.objects.get(id=user_id)
+        user_data = {
+            'id': user.id,
+            'student_id': user.student_id,
+            'email': user.email,
+            'name': user.name,
+            'sem': user.sem,
+            'img': user.img,
+            'admin': user.admin,
+            'registration_number': user.registration_number,
+            'branch': user.branch,
+        }
+        return JsonResponse({'user': user_data})
+    except Users.DoesNotExist:
+        return JsonResponse({'error': 'User does not exist'}, status=404)
+

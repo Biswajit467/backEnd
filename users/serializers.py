@@ -23,6 +23,11 @@ class NotificationSerializer(serializers.ModelSerializer):
     class Meta:
         model = Notification
         fields = ['id', 'notification', 'created_at', 'user_id']
+    def update(self, instance, validated_data):
+        # Update notification fields
+        instance.notification = validated_data.get('notification', instance.notification)
+        instance.save()
+        return instance
 
 
 # class PostsSerializer(serializers.ModelSerializer):

@@ -41,3 +41,18 @@ class Notification(models.Model):
 
     class Meta:
         db_table = 'notification'
+        
+
+class Scores(models.Model):
+    id = models.AutoField(primary_key=True)
+    student = models.ForeignKey(Users, on_delete=models.CASCADE)
+    sem = models.IntegerField()
+    tech = models.IntegerField(default=0)
+    etc = models.IntegerField(default=0)
+    art = models.IntegerField(default=0)
+    sports = models.IntegerField(default=0)
+    academic = models.IntegerField(default=0)
+    overall = models.IntegerField(default=0)
+
+    class Meta:
+        db_table = 'scores'

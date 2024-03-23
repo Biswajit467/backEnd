@@ -4,7 +4,8 @@ from django.conf import settings
 from django.conf.urls.static import static
 
 user_api = [
-    path('index/', views.index, name='index')
+       path('user/get-user-data/<int:user_id>/', views.get_user_data, name='get_user_data'),
+
 ]
 admin_api = [
     path('admins/', views.admins, name='admins')
@@ -41,12 +42,21 @@ updation_api = [
 ]
 
 notfication_api = [
-    path('create-notification/', views.create_notification,
-         name='create-notification'),
+    path('get-notifications/', views.get_all_notifications,
+         name='get_all_notifications'),
 
+    path('create-notification/', views.create_notification,
+         name='create_notification'),
+    path('update-notification/<int:pk>/',
+         views.update_notification, name='update_notification'),
+]
+
+scores_api = [
+    path('update-scores/', views.update_scores, name='update_scores'),
 ]
 
 urlpatterns = user_api + admin_api + auth_api + \
-    post_api + updation_api + notfication_api
+    post_api + \
+    scores_api + updation_api + notfication_api
 
 urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
