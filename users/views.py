@@ -299,8 +299,13 @@ def add_post(request):
 @api_view(['GET'])
 def get_images(request):
     page_number = request.query_params.get('page', 1)
-    # we will adjust the page size later on, as per our requirement........ for now it is 10
-    paginator = Paginator(Posts.objects.all(), 10)
+    try:
+        page_number = int(page_number)
+    except ValueError:
+        page_number = 1
+
+    paginator = Paginator(Posts.objects.all().order_by('-date'), 10)
+
     try:
         result_page = paginator.page(page_number)
     except PageNotAnInteger:
@@ -309,4 +314,93 @@ def get_images(request):
         result_page = paginator.page(paginator.num_pages)
 
     serializer = PostsSerializer(result_page, many=True)
-    return Response(serializer.data)
+    return Response({
+        'data': serializer.data,
+        'total_pages': paginator.num_pages
+    })
+
+
+@api_view(['GET'])
+def get_post_details(request, post_id):
+    print("Inside the get_post_details method :")
+    try:
+        post = Posts.objects.get(id=post_id)
+        print('This is post id : ', post)
+        serializer = PostsSerializer(post)
+        print("this is serializer : ", serializer)
+        return Response(serializer.data)
+    except Posts.DoesNotExist:
+        return Response(status=404)
+
+
+@api_view(['PUT'])
+def update_post(request, post_id):
+    print("This is update_post api")
+    token = request.headers.get('Authorization')
+
+    if not token:
+        return Response({"error": "Not authenticated!"}, status=status.HTTP_401_UNAUTHORIZED)
+
+    try:
+        decoded_token = jwt.decode(token, 'jwtkey', algorithms=['HS256'])
+        user_instance = get_object_or_404(Users, id=decoded_token['id'])
+
+    except jwt.ExpiredSignatureError:
+        return Response({"error": "Token is expired!"}, status=status.HTTP_403_FORBIDDEN)
+    except jwt.InvalidTokenError:
+        return Response({"error": "Token is not valid!"}, status=status.HTTP_403_FORBIDDEN)
+
+    post = get_object_or_404(Posts, id=post_id)
+
+    if post.uid != user_instance:
+        return Response({"error": "You do not have permission to update this post"}, status=status.HTTP_403_FORBIDDEN)
+
+    title = request.data.get('title')
+    desc = request.data.get('desc')
+    category = request.data.get('category')
+
+    if not title:
+        request.data['title'] = post.title
+    if not desc:
+        request.data['desc'] = post.desc
+    if not category:
+        request.data['category'] = post.category
+
+    serializer = PostsSerializer(post, data=request.data, partial=True)
+    if serializer.is_valid():
+        serializer.save()
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+@api_view(['DELETE'])
+def delete_post(request, post_id):
+    print("This is delete_post api")
+    print("This is headers: ", request.headers)
+    token = request.headers.get('Authorization')
+
+    print("This is token ", token)
+
+    if not token:
+        return Response({"error": "Not authenticated!"}, status=status.HTTP_401_UNAUTHORIZED)
+
+    try:
+        decoded_token = jwt.decode(token, 'jwtkey', algorithms=['HS256'])
+        print("This is decoded-token", decoded_token)
+        user_instance = get_object_or_404(Users, id=decoded_token['id'])
+        print("This is user instance", user_instance)
+
+    except jwt.ExpiredSignatureError:
+        return Response({"error": "Token is expired!"}, status=status.HTTP_403_FORBIDDEN)
+    except jwt.InvalidTokenError:
+        return Response({"error": "Token is not valid!"}, status=status.HTTP_403_FORBIDDEN)
+
+    post = get_object_or_404(Posts, id=post_id)
+    print("thisi is post var: ", post)
+
+    if post.uid != user_instance:
+        return Response({"error": "You do not have permission to delete this post"}, status=status.HTTP_403_FORBIDDEN)
+
+    post.delete()
+    return Response({"message": "Post deleted successfully"}, status=status.HTTP_204_NO_CONTENT)
