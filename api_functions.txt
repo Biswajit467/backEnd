@@ -4,3 +4,18 @@ update_student_info(admin) =>
 here admin can change students  , evertything including student id also
 update_personal_info(student) =>
 student can update password  , email , name , sem 
+
+
+
+
+
+
+
+
+
+
+
+
+post things :
+python -m pip install Pillow      use this to install pillow for : 
+    img = models.ImageField(upload_to='post_images/')   to use ImageField we have to install this.
