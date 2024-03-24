@@ -42,6 +42,10 @@ notfication_api = [
 scores_api = [
     path('admins/update-scores/', views.update_scores, name='update_scores'),
     path('user/get-user-scores/<int:user_id>/<int:semester>/', views.get_user_scores, name='get_user_scores'),
+    path('top-scores/', views.top_scores, name='top_scores'),
+    path('student-scores/<str:student_id>/', views.student_scores, name='student-scores'),
+    path('get-leader-board/<str:student_id>/', views.get_leader_board, name='get_leader_board'),
+
 ]
 
 urlpatterns = user_api + admin_api + auth_api + \

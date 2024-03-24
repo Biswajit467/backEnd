@@ -1,6 +1,5 @@
 from django.shortcuts import render
-from django.http import HttpResponse
-from django.http import JsonResponse
+from django.http import HttpResponse,JsonResponse , Http404
 from django.views.decorators.csrf import csrf_exempt, csrf_protect
 from django.contrib.auth.hashers import make_password
 import json
@@ -9,7 +8,7 @@ from django.db import connection
 from django.contrib.auth.hashers import check_password
 import jwt
 from rest_framework.decorators import api_view
-from .serializers import UserUpdateSerializer, AdminUpdateSerializer, PostsSerializer, NotificationSerializer, ScoresSerializer
+from .serializers import UserUpdateSerializer, AdminUpdateSerializer, PostsSerializer, NotificationSerializer, ScoresSerializer , TopScoresSerializer , UsersSerializer
 from rest_framework.response import Response
 from rest_framework import status
 from rest_framework import generics
@@ -20,6 +19,7 @@ from rest_framework.response import Response
 from rest_framework import status
 from .models import Posts
 from django.shortcuts import get_object_or_404
+
 
 
 # Create your views here.
@@ -392,11 +392,14 @@ def get_user_scores(request, user_id, semester):
                     growth['semester'] = score.sem
 
                     # Calculate percentage growth for each field
+                    if prev_scores.overall != 0:
+                        growth['percentage_overall'] = ((score.overall - prev_scores.overall) / prev_scores.overall) * 100
+                    else:
+                        growth['percentage_overall'] = 0
                     if prev_scores.tech != 0:
                         growth['percentage_tech'] = ((score.tech - prev_scores.tech) / prev_scores.tech) * 100
                     else:
                         growth['percentage_tech'] = 0
-
                     if prev_scores.etc != 0:
                         growth['percentage_etc'] = ((score.etc - prev_scores.etc) / prev_scores.etc) * 100
                     else:
@@ -465,7 +468,6 @@ def get_user_scores(request, user_id, semester):
 
 
 def get_user_data(request, user_id):
-    print('inside get_user_data')
     try:
         user = Users.objects.get(id=user_id)
         user_data = {
@@ -482,3 +484,65 @@ def get_user_data(request, user_id):
         return JsonResponse({'user': user_data})
     except Users.DoesNotExist:
         return JsonResponse({'error': 'User does not exist'}, status=404)
+    
+@api_view(['GET'])
+def top_scores(request):
+    if request.method == 'GET':
+        # Get the top 10 scores for semester 8
+        top_scores = Scores.objects.filter(sem=8).order_by('-overall')[:10]
+
+        # Serialize the top scores
+        serializer = TopScoresSerializer(top_scores, many=True)
+
+        return Response(serializer.data)
+
+@api_view(['GET'])
+def student_scores(request, student_id):
+    if request.method == 'GET':
+        try:
+            # Retrieve the student
+            student = Users.objects.get(id=student_id)
+
+            # Get the student's score for semester 8
+            student_score = Scores.objects.filter(student=student, sem=8).first()
+
+            if student_score is None:
+                return Response({'detail': 'Student score for semester 8 not found'}, status=404)
+
+            # Serialize the student's score
+            serializer = TopScoresSerializer(student_score)
+
+            return Response(serializer.data)
+        except Users.DoesNotExist:
+            raise Http404('Student does not exist')
+        
+@api_view(['GET'])
+def get_leader_board(request, student_id=None):
+    if request.method == 'GET':
+        response_data = {}
+
+        if student_id:
+            try:
+                # Retrieve the student
+                student = Users.objects.get(id=student_id)
+
+                # Get the student's score for semester 8
+                student_score = Scores.objects.filter(student=student, sem=8).first()
+
+                if student_score is None:
+                    return Response({'detail': 'Student score for semester 8 not found'}, status=404)
+
+                # Serialize the student's score
+                student_serializer = TopScoresSerializer(student_score)
+                response_data['user'] = student_serializer.data
+            except Users.DoesNotExist:
+                raise Http404('Student does not exist')
+
+        # Get the top 10 scores for semester 8
+        top_scores = Scores.objects.filter(sem=8).order_by('-overall')[:10]
+
+        # Serialize the top scores
+        top_scores_serializer = TopScoresSerializer(top_scores, many=True)
+        response_data['top_scorers'] = top_scores_serializer.data
+
+        return Response(response_data)

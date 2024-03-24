@@ -34,3 +34,17 @@ class ScoresSerializer(serializers.ModelSerializer):
     class Meta:
         model = Scores
         fields = '__all__'
+
+class UsersSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Users
+        fields = ['name', 'sem', 'img', 'registration_number', 'branch']
+
+
+class TopScoresSerializer(serializers.ModelSerializer):
+    student_details = UsersSerializer(source='student', read_only=True)
+
+    class Meta:
+        model = Scores
+        fields = '__all__'
+        extra_fields = ['student_details']
