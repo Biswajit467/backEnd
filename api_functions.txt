@@ -4,3 +4,4 @@ update_student_info(admin) =>
 here admin can change students  , evertything including student id also
 update_personal_info(student) =>
 student can update password  , email , name , sem 
+

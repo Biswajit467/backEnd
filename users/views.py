@@ -8,7 +8,8 @@ from django.db import connection
 from django.contrib.auth.hashers import check_password
 import jwt
 from rest_framework.decorators import api_view
-from .serializers import UserUpdateSerializer, AdminUpdateSerializer, PostsSerializer, NotificationSerializer, ScoresSerializer , TopScoresSerializer , UsersSerializer
+from django.db import models 
+from .serializers import UserUpdateSerializer, AdminUpdateSerializer, PostsSerializer, NotificationSerializer, ScoresSerializer , TopScoresSerializer , UsersSerializer , UsersSerializerforAdmin
 from rest_framework.response import Response
 from rest_framework import status
 from rest_framework import generics
@@ -19,7 +20,8 @@ from rest_framework.response import Response
 from rest_framework import status
 from .models import Posts
 from django.shortcuts import get_object_or_404
-
+from django.conf import settings
+from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
 
 
 # Create your views here.
@@ -49,6 +51,18 @@ def check_db_connection(request):
         # If an exception occurs, return an error response
         return JsonResponse({'status': 'Database connection failed', 'error': str(e)}, status=500)
 
+@api_view(['GET'])
+def user_stats(request):
+    total_records = Users.objects.filter(admin=False).count()
+
+    branches = Users.objects.filter(admin=False).values('branch').annotate(total_students=models.Count('branch'))
+
+    data = {
+        'total_records': total_records,
+        'total_students_by_branch': list(branches)
+    }
+
+    return Response(data)
 
 @api_view(['POST'])
 @csrf_exempt
@@ -320,6 +334,8 @@ def update_notification(request, pk):
 
 @api_view(['POST'])
 def add_post(request):
+    print("This is add_post api")
+    print("This is headers: ", request.headers)
     token = request.headers.get('Authorization')
     if not token:
         return Response({"error": "Not authenticated!"}, status=status.HTTP_401_UNAUTHORIZED)
@@ -336,8 +352,118 @@ def add_post(request):
     if serializer.is_valid():
         serializer.save(uid=user_instance)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
+
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
+
+@api_view(['GET'])
+def get_images(request):
+    page_number = request.query_params.get('page', 1)
+    try:
+        page_number = int(page_number)
+    except ValueError:
+        page_number = 1
+
+    paginator = Paginator(Posts.objects.all().order_by('-date'), 10)
+
+    try:
+        result_page = paginator.page(page_number)
+    except PageNotAnInteger:
+        result_page = paginator.page(1)
+    except EmptyPage:
+        result_page = paginator.page(paginator.num_pages)
+
+    serializer = PostsSerializer(result_page, many=True)
+    return Response({
+        'data': serializer.data,
+        'total_pages': paginator.num_pages
+    })
+
+
+@api_view(['GET'])
+def get_post_details(request, post_id):
+    print("Inside the get_post_details method :")
+    try:
+        post = Posts.objects.get(id=post_id)
+        print('This is post id : ', post)
+        serializer = PostsSerializer(post)
+        print("this is serializer : ", serializer)
+        return Response(serializer.data)
+    except Posts.DoesNotExist:
+        return Response(status=404)
+
+
+@api_view(['PUT'])
+def update_post(request, post_id):
+    print("This is update_post api")
+    token = request.headers.get('Authorization')
+
+    if not token:
+        return Response({"error": "Not authenticated!"}, status=status.HTTP_401_UNAUTHORIZED)
+
+    try:
+        decoded_token = jwt.decode(token, 'jwtkey', algorithms=['HS256'])
+        user_instance = get_object_or_404(Users, id=decoded_token['id'])
+
+    except jwt.ExpiredSignatureError:
+        return Response({"error": "Token is expired!"}, status=status.HTTP_403_FORBIDDEN)
+    except jwt.InvalidTokenError:
+        return Response({"error": "Token is not valid!"}, status=status.HTTP_403_FORBIDDEN)
+
+    post = get_object_or_404(Posts, id=post_id)
+
+    if post.uid != user_instance:
+        return Response({"error": "You do not have permission to update this post"}, status=status.HTTP_403_FORBIDDEN)
+
+    title = request.data.get('title')
+    desc = request.data.get('desc')
+    category = request.data.get('category')
+
+    if not title:
+        request.data['title'] = post.title
+    if not desc:
+        request.data['desc'] = post.desc
+    if not category:
+        request.data['category'] = post.category
+
+    serializer = PostsSerializer(post, data=request.data, partial=True)
+    if serializer.is_valid():
+        serializer.save()
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+@api_view(['DELETE'])
+def delete_post(request, post_id):
+    print("This is delete_post api")
+    print("This is headers: ", request.headers)
+    token = request.headers.get('Authorization')
+
+    print("This is token ", token)
+
+    if not token:
+        return Response({"error": "Not authenticated!"}, status=status.HTTP_401_UNAUTHORIZED)
+
+    try:
+        decoded_token = jwt.decode(token, 'jwtkey', algorithms=['HS256'])
+        print("This is decoded-token", decoded_token)
+        user_instance = get_object_or_404(Users, id=decoded_token['id'])
+        print("This is user instance", user_instance)
+
+    except jwt.ExpiredSignatureError:
+        return Response({"error": "Token is expired!"}, status=status.HTTP_403_FORBIDDEN)
+    except jwt.InvalidTokenError:
+        return Response({"error": "Token is not valid!"}, status=status.HTTP_403_FORBIDDEN)
+
+    post = get_object_or_404(Posts, id=post_id)
+    print("thisi is post var: ", post)
+
+    if post.uid != user_instance:
+        return Response({"error": "You do not have permission to delete this post"}, status=status.HTTP_403_FORBIDDEN)
+
+    post.delete()
+    return Response({"message": "Post deleted successfully"}, status=status.HTTP_204_NO_CONTENT)
 
 @api_view(['POST'])
 def update_scores(request):

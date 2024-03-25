@@ -1,12 +1,15 @@
 from django.urls import path
 from . import views
+from django.conf import settings
+from django.conf.urls.static import static
 
 user_api = [
        path('user/get-user-data/<int:user_id>/', views.get_user_data, name='get_user_data'),
 
 ]
 admin_api = [
-    path('admins/', views.admins, name='admins')
+    path('admins/', views.admins, name='admins'),
+    path('admins/user-stats/', views.user_stats, name='user_stats'),
 ]
 
 auth_api = [
@@ -19,7 +22,17 @@ auth_api = [
     path('logout/', views.logout, name='logout'),
     path('check-db-connection/', views.check_db_connection,
          name='check_db_connection'),
-    path('add-post/', views.add_post, name='add_post')
+]
+post_api = [
+
+    path('add-post/', views.add_post, name='add_post'),
+    path('view-posts/', views.get_images, name='get_images'),
+    path('delete-post/<int:post_id>', views.delete_post, name='delete_post'),
+    path('update-post/<int:post_id>', views.update_post, name='update_post'),
+    path('post-details/<int:post_id>',
+         views.get_post_details, name='get_post_details')
+
+
 ]
 
 updation_api = [
@@ -48,5 +61,9 @@ scores_api = [
 
 ]
 
+
 urlpatterns = user_api + admin_api + auth_api + \
+    post_api + \
     scores_api + updation_api + notfication_api
+
+urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
