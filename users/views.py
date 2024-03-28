@@ -4,7 +4,7 @@ from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt, csrf_protect
 from django.contrib.auth.hashers import make_password
 import json
-from .models import Users , Posts , Notification , Scores
+from .models import Users, Posts, Notification, Scores
 from django.db import connection
 from django.contrib.auth.hashers import check_password
 import jwt
@@ -142,16 +142,7 @@ def login(request):
     token = jwt.encode({'id': user.id}, 'jwtkey', algorithm='HS256')
     print("this is my jwt token", token)
 
-    return JsonResponse({'student_id_token': token, 'user': {'id': user.id, 'student_id': user.student_id , 'is_admin':user.admin ,'is_banned' : user.ban},  'message': 'user logged in successfully'}, status=200)
-
-    #  # Add the token to the response as a cookie
-    # response = JsonResponse({'user': {'id': user.id, 'student_id': user.student_id, 'name': user.name, 'sem': user.sem,
-    #                         'img': user.img, 'email': user.email}, 'message': 'user logged in successfully'}, status=200)
-
-    # response.set_cookie('student_id_token', token)
-    # # response['Authorization'] = f'Bearer {token}'
-
-    # return response
+    return JsonResponse({'student_id_token': token, 'user': {'id': user.id, 'student_id': user.student_id, 'is_admin': user.admin, 'is_banned': user.ban},  'message': 'user logged in successfully'}, status=200)
 
 
 @api_view(['POST'])
@@ -260,7 +251,8 @@ def get_all_notifications(request):
     serialized_data = []
 
     for notification in notifications:
-        user_id = notification.user_id.id  # Assuming user_id is the foreign key to Users table
+        # Assuming user_id is the foreign key to Users table
+        user_id = notification.user_id.id
         try:
             user = Users.objects.get(id=user_id)
             user_name = user.name
@@ -279,6 +271,7 @@ def get_all_notifications(request):
 
     return Response(serialized_data, status=status.HTTP_200_OK)
 
+
 @api_view(['POST'])
 def create_notification(request):
     print("inside create notification")
@@ -291,7 +284,7 @@ def create_notification(request):
     try:
         decoded_token = jwt.decode(token, 'jwtkey', algorithms=['HS256'])
         user_instance = get_object_or_404(Users, id=decoded_token['id'])
-        print( "decode token" , decoded_token , 'user_instance' ,user_instance)
+        print("decode token", decoded_token, 'user_instance', user_instance)
     except jwt.ExpiredSignatureError:
         return Response({"error": "Token is expired!"}, status=status.HTTP_403_FORBIDDEN)
     except jwt.InvalidTokenError:
@@ -302,6 +295,7 @@ def create_notification(request):
         return Response(serializer.data, status=status.HTTP_201_CREATED)
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
+
 @api_view(['PUT'])
 def update_notification(request, pk):
     try:
@@ -309,22 +303,20 @@ def update_notification(request, pk):
     except Notification.DoesNotExist:
         return Response({"error": "Notification not found"}, status=status.HTTP_404_NOT_FOUND)
 
-    serializer = NotificationSerializer(notification_instance, data=request.data)
+    serializer = NotificationSerializer(
+        notification_instance, data=request.data)
     if serializer.is_valid():
         serializer.save()
         return Response(serializer.data, status=status.HTTP_200_OK)
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-   
-
-
-
 
 @api_view(['POST'])
 def add_post(request):
     print("This is add_post api")
-    print("This is headers: ", request.headers)
+    # print("This is headers: ", request.headers)
     token = request.headers.get('Authorization')
+    print("this is request.data: ", request.data)
     if not token:
         return Response({"error": "Not authenticated!"}, status=status.HTTP_401_UNAUTHORIZED)
 
@@ -345,14 +337,16 @@ def add_post(request):
 
 
 @api_view(['GET'])
-def get_images(request):
+def view_posts(request):
     page_number = request.query_params.get('page', 1)
     try:
         page_number = int(page_number)
     except ValueError:
         page_number = 1
 
-    paginator = Paginator(Posts.objects.all().order_by('-date'), 10)
+    # paginator = Paginator(Posts.objects.all().order_by('-date'), 10)
+    paginator = Paginator(Posts.objects.select_related(
+        'uid').all().order_by('-date'), 10)
 
     try:
         result_page = paginator.page(page_number)
@@ -364,19 +358,34 @@ def get_images(request):
     serializer = PostsSerializer(result_page, many=True)
     return Response({
         'data': serializer.data,
-        'total_pages': paginator.num_pages
+        'total_pages': paginator.num_pages,
     })
 
+
+# @api_view(['GET'])
+# def get_post_details(request, post_id):
+#     print("Inside the get_post_details method :")
+#     try:
+#         post = Posts.objects.get(id=post_id)
+#         print('This is post id : ', post)
+#         serializer = PostsSerializer(post)
+#         print("this is serializer : ", serializer)
+#         return Response(serializer.data)
+#     except Posts.DoesNotExist:
+#         return Response(status=404)
 
 @api_view(['GET'])
 def get_post_details(request, post_id):
     print("Inside the get_post_details method :")
     try:
-        post = Posts.objects.get(id=post_id)
-        print('This is post id : ', post)
-        serializer = PostsSerializer(post)
-        print("this is serializer : ", serializer)
-        return Response(serializer.data)
+        post = Posts.objects.select_related('uid').get(id=post_id)
+        user_posts = Posts.objects.filter(uid=post.uid)
+        post_serializer = PostsSerializer(post)
+        user_posts_serializer = PostsSerializer(user_posts, many=True)
+        return JsonResponse({
+            'post': post_serializer.data,
+            'user_posts': user_posts_serializer.data
+        })
     except Posts.DoesNotExist:
         return Response(status=404)
 
@@ -453,6 +462,7 @@ def delete_post(request, post_id):
     post.delete()
     return Response({"message": "Post deleted successfully"}, status=status.HTTP_204_NO_CONTENT)
 
+
 @api_view(['POST'])
 def update_scores(request):
     student_id = request.data.get('student_id')
@@ -468,7 +478,8 @@ def update_scores(request):
 
     try:
         user = Users.objects.get(id=student_id)
-        scores_instances = Scores.objects.filter(student=user, sem__gte=semester)
+        scores_instances = Scores.objects.filter(
+            student=user, sem__gte=semester)
     except Users.DoesNotExist:
         return Response({'error': 'User not found'}, status=status.HTTP_404_NOT_FOUND)
 
@@ -509,4 +520,3 @@ def get_user_data(request, user_id):
         return JsonResponse({'user': user_data})
     except Users.DoesNotExist:
         return JsonResponse({'error': 'User does not exist'}, status=404)
-

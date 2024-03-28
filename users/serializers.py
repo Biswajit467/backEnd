@@ -23,20 +23,18 @@ class NotificationSerializer(serializers.ModelSerializer):
     class Meta:
         model = Notification
         fields = ['id', 'notification', 'created_at', 'user_id']
+
     def update(self, instance, validated_data):
         # Update notification fields
-        instance.notification = validated_data.get('notification', instance.notification)
+        instance.notification = validated_data.get(
+            'notification', instance.notification)
         instance.save()
         return instance
 
 
-# class PostsSerializer(serializers.ModelSerializer):
-#     class Meta:
-#         model = Posts
-#         fields = ['id', 'title', 'img', 'desc', 'date', 'uid', 'category']
-
 class PostsSerializer(serializers.ModelSerializer):
     url = serializers.SerializerMethodField()
+    uid = serializers.SerializerMethodField()
 
     class Meta:
         model = Posts
@@ -45,3 +43,14 @@ class PostsSerializer(serializers.ModelSerializer):
 
     def get_url(self, obj):
         return obj.img.url
+
+    def get_uid(self, obj):
+        user = obj.uid
+        return {
+            'id': user.id,
+            'name': user.name,
+            'email': user.email,
+            'sem': user.sem,
+            'admin': user.admin,
+            'branch': user.branch
+        }

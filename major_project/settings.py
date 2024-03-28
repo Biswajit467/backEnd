@@ -57,12 +57,13 @@ INSTALLED_APPS = [
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
-    'corsheaders.middleware.CorsMiddleware', 
+    'corsheaders.middleware.CorsMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+
 ]
 
 ROOT_URLCONF = 'major_project.urls'
@@ -92,11 +93,11 @@ WSGI_APPLICATION = 'major_project.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.mysql',
-        'NAME': 'campus_canvas_main', 
-        'USER': 'root',  
-        'PASSWORD': 'biswajit123456789', 
-        'HOST': 'localhost', 
-        'PORT': '3306', 
+        'NAME': 'campus_canvas_main',
+        'USER': 'root',
+        'PASSWORD': 'biswajit123456789',
+        'HOST': 'localhost',
+        'PORT': '3306',
     }
 }
 
@@ -149,5 +150,3 @@ STATIC_URL = '/static/'
 # Define MEDIA_ROOT and MEDIA_URL
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 MEDIA_URL = '/media/'
-
-

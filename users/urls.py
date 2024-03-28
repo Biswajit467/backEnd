@@ -25,7 +25,7 @@ auth_api = [
 post_api = [
 
     path('add-post/', views.add_post, name='add_post'),
-    path('view-posts/', views.get_images, name='get_images'),
+    path('view-posts/', views.view_posts, name='view_posts'),
     path('delete-post/<int:post_id>', views.delete_post, name='delete_post'),
     path('update-post/<int:post_id>', views.update_post, name='update_post'),
     path('post-details/<int:post_id>',
