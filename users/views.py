@@ -1,5 +1,6 @@
 from django.shortcuts import render
-from django.http import HttpResponse,JsonResponse , Http404
+from django.http import HttpResponse
+from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt, csrf_protect
 from django.contrib.auth.hashers import make_password
 import json
@@ -8,8 +9,7 @@ from django.db import connection
 from django.contrib.auth.hashers import check_password
 import jwt
 from rest_framework.decorators import api_view
-from django.db import models 
-from .serializers import UserUpdateSerializer, AdminUpdateSerializer, PostsSerializer, NotificationSerializer, ScoresSerializer , TopScoresSerializer , UsersSerializer , UsersSerializerforAdmin
+from .serializers import UserUpdateSerializer, AdminUpdateSerializer, PostsSerializer, NotificationSerializer
 from rest_framework.response import Response
 from rest_framework import status
 from rest_framework import generics
@@ -179,9 +179,34 @@ def logout(request):
     return response
 
 
+# @csrf_exempt
+# @api_view(['PATCH'])
+# def update_personal_info(request, pk):
+#     print('this is request.data:  ', request.data)
+#     try:
+#         user = Users.objects.get(pk=pk)
+#     except Users.DoesNotExist:
+#         return Response({'error': 'User not found'}, status=status.HTTP_404_NOT_FOUND)
+
+#     if request.method == 'PATCH':
+#         # Make a copy of request data to avoid modifying the original data
+#         data = request.data.copy()
+#         print("this is data data var in uddate_presonal_info: ",data)
+#         password = data.get('password')
+#         if password:
+#             data['password'] = make_password(password)  # Encrypt the password
+#         serializer = UserUpdateSerializer(user, data=data, partial=True)
+#         if serializer.is_valid():
+#             serializer.save()
+#             return Response(serializer.data)
+#         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+#     else:
+#         return Response({'error': 'Only PATCH method is allowed'}, status=status.HTTP_405_METHOD_NOT_ALLOWED)
+
 @csrf_exempt
 @api_view(['PATCH'])
 def update_personal_info(request, pk):
+    print('this is request.data:  ', request.data)
     try:
         user = Users.objects.get(pk=pk)
     except Users.DoesNotExist:
@@ -190,9 +215,24 @@ def update_personal_info(request, pk):
     if request.method == 'PATCH':
         # Make a copy of request data to avoid modifying the original data
         data = request.data.copy()
+        print("this is data data var in update_personal_info: ", data)
+
+        # Check each field individually
+        if 'name' in data and not data['name']:  # Check if name is empty
+            data.pop('name')  # Remove name from data if it's empty
+
+        if 'email' in data and not data['email']:  # Check if email is empty
+            data.pop('email')  # Remove email from data if it's empty
+
+        if 'img' in data and not data['img']:  # Check if img is empty
+            data.pop('img')  # Remove img from data if it's empty
+        if 'password' in data and not data['password']:
+            data.pop('password')
+
         password = data.get('password')
         if password:
             data['password'] = make_password(password)  # Encrypt the password
+
         serializer = UserUpdateSerializer(user, data=data, partial=True)
         if serializer.is_valid():
             serializer.save()
@@ -331,12 +371,16 @@ def update_notification(request, pk):
         return Response(serializer.data, status=status.HTTP_200_OK)
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
+   
+
+
+
 
 @api_view(['POST'])
 def add_post(request):
     print("This is add_post api")
-    print("This is headers: ", request.headers)
     token = request.headers.get('Authorization')
+    print("this is request.data: ", request.data)
     if not token:
         return Response({"error": "Not authenticated!"}, status=status.HTTP_401_UNAUTHORIZED)
 
@@ -351,20 +395,40 @@ def add_post(request):
     serializer = PostsSerializer(data=request.data)
     if serializer.is_valid():
         serializer.save(uid=user_instance)
+
+        # Increment corresponding score based on category for all semesters up to 8th semester
+        category = request.data.get('category')
+        if category:
+            for sem in range(user_instance.sem, 9):
+                try:
+                    scores_instance = Scores.objects.get(
+                        student=user_instance, sem=sem)
+                    setattr(scores_instance, category.lower(), getattr(
+                        scores_instance, category.lower()) + 1)
+                    scores_instance.overall += 1
+                    scores_instance.save()
+                except Scores.DoesNotExist:
+                    # If no score instance exists, create a new one
+                    Scores.objects.create(
+                        student=user_instance, sem=sem, **{category.lower(): 1, 'overall': 1})
+        print("serializer.data", serializer.data)
+
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
 @api_view(['GET'])
-def get_images(request):
+def view_posts(request):
     page_number = request.query_params.get('page', 1)
     try:
         page_number = int(page_number)
     except ValueError:
         page_number = 1
 
-    paginator = Paginator(Posts.objects.all().order_by('-date'), 10)
+    # paginator = Paginator(Posts.objects.all().order_by('-date'), 10)
+    paginator = Paginator(Posts.objects.select_related(
+        'uid').all().order_by('-date'), 10)
 
     try:
         result_page = paginator.page(page_number)
@@ -376,7 +440,7 @@ def get_images(request):
     serializer = PostsSerializer(result_page, many=True)
     return Response({
         'data': serializer.data,
-        'total_pages': paginator.num_pages
+        'total_pages': paginator.num_pages,
     })
 
 
@@ -384,11 +448,14 @@ def get_images(request):
 def get_post_details(request, post_id):
     print("Inside the get_post_details method :")
     try:
-        post = Posts.objects.get(id=post_id)
-        print('This is post id : ', post)
-        serializer = PostsSerializer(post)
-        print("this is serializer : ", serializer)
-        return Response(serializer.data)
+        post = Posts.objects.select_related('uid').get(id=post_id)
+        user_posts = Posts.objects.filter(uid=post.uid)
+        post_serializer = PostsSerializer(post)
+        user_posts_serializer = PostsSerializer(user_posts, many=True)
+        return JsonResponse({
+            'post': post_serializer.data,
+            'user_posts': user_posts_serializer.data
+        })
     except Posts.DoesNotExist:
         return Response(status=404)
 
@@ -464,6 +531,7 @@ def delete_post(request, post_id):
 
     post.delete()
     return Response({"message": "Post deleted successfully"}, status=status.HTTP_204_NO_CONTENT)
+
 
 @api_view(['POST'])
 def update_scores(request):
