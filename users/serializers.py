@@ -13,11 +13,25 @@ class UserUpdateSerializer(serializers.ModelSerializer):
         fields = ['name', 'email', 'password', 'img']
 
 
+# class AdminUpdateSerializer(serializers.ModelSerializer):
+#     class Meta:
+#         model = Users
+#         fields = ['student_id', 'name', 'email', 'password',
+#                   'img', 'branch', 'registration_number', 'ban']
+        
+
 class AdminUpdateSerializer(serializers.ModelSerializer):
     class Meta:
         model = Users
-        fields = ['student_id', 'name', 'email', 'password',
-                  'img', 'branch', 'registration_number', 'ban']
+        fields = ['id', 'student_id', 'password', 'email', 'name', 'sem', 'img', 'admin', 'registration_number', 'branch', 'ban']
+        
+    def to_internal_value(self, data):
+        updated_data = {}
+        for key, value in data.items():
+            # If the value is not empty, include it in the updated data
+            if value != "":
+                updated_data[key] = value
+        return updated_data
 
 
 class NotificationSerializer(serializers.ModelSerializer):

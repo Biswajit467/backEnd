@@ -1,5 +1,5 @@
 from django.shortcuts import render
-from django.http import HttpResponse,JsonResponse , Http404
+from django.http import HttpResponse, JsonResponse, Http404
 from django.views.decorators.csrf import csrf_exempt, csrf_protect
 from django.contrib.auth.hashers import make_password
 import json
@@ -8,8 +8,8 @@ from django.db import connection
 from django.contrib.auth.hashers import check_password
 import jwt
 from rest_framework.decorators import api_view
-from django.db import models 
-from .serializers import UserUpdateSerializer, AdminUpdateSerializer, PostsSerializer, NotificationSerializer, ScoresSerializer , TopScoresSerializer , UsersSerializer , UsersSerializerforAdmin
+from django.db import models
+from .serializers import UserUpdateSerializer, AdminUpdateSerializer, PostsSerializer, NotificationSerializer, ScoresSerializer, TopScoresSerializer, UsersSerializer, UsersSerializerforAdmin
 from rest_framework.response import Response
 from rest_framework import status
 from rest_framework import generics
@@ -51,11 +51,13 @@ def check_db_connection(request):
         # If an exception occurs, return an error response
         return JsonResponse({'status': 'Database connection failed', 'error': str(e)}, status=500)
 
+
 @api_view(['GET'])
 def user_stats(request):
     total_records = Users.objects.filter(admin=False).count()
 
-    branches = Users.objects.filter(admin=False).values('branch').annotate(total_students=models.Count('branch'))
+    branches = Users.objects.filter(admin=False).values(
+        'branch').annotate(total_students=models.Count('branch'))
 
     data = {
         'total_records': total_records,
@@ -64,12 +66,16 @@ def user_stats(request):
 
     return Response(data)
 
+
 @api_view(['GET'])
 def users_by_branch_and_semester(request, branch, semester):
-    users_by_branch_and_semester = Users.objects.filter(branch=branch, sem=semester, admin=False)
-    serialized_users_by_branch_and_semester = UsersSerializer(users_by_branch_and_semester, many=True)
-    
+    users_by_branch_and_semester = Users.objects.filter(
+        branch=branch, sem=semester, admin=False)
+    serialized_users_by_branch_and_semester = UsersSerializerforAdmin(
+        users_by_branch_and_semester, many=True)
+
     return Response(serialized_users_by_branch_and_semester.data)
+
 
 @api_view(['POST'])
 @csrf_exempt
@@ -472,6 +478,7 @@ def delete_post(request, post_id):
     post.delete()
     return Response({"message": "Post deleted successfully"}, status=status.HTTP_204_NO_CONTENT)
 
+
 @api_view(['POST'])
 def update_scores(request):
     student_id = request.data.get('student_id')
@@ -510,54 +517,9 @@ def update_scores(request):
 
     return Response({'message': 'Scores updated successfully'}, status=status.HTTP_200_OK)
 
+
 @api_view(['GET'])
 def get_user_scores(request, user_id, semester):
-    def calculate_percentage_growth(scores, current_sem):
-            growth_data = []
-            prev_scores = None
-            for score in scores:
-                if score.sem <= current_sem:
-                    if prev_scores is None:
-                        prev_scores = score
-                        continue
-
-                    growth = {}
-                    growth['semester'] = score.sem
-
-                    # Calculate percentage growth for each field
-                    if prev_scores.overall != 0:
-                        growth['percentage_overall'] = ((score.overall - prev_scores.overall) / prev_scores.overall) * 100
-                    else:
-                        growth['percentage_overall'] = 0
-                    if prev_scores.tech != 0:
-                        growth['percentage_tech'] = ((score.tech - prev_scores.tech) / prev_scores.tech) * 100
-                    else:
-                        growth['percentage_tech'] = 0
-                    if prev_scores.etc != 0:
-                        growth['percentage_etc'] = ((score.etc - prev_scores.etc) / prev_scores.etc) * 100
-                    else:
-                        growth['percentage_etc'] = 0
-
-                    if prev_scores.art != 0:
-                        growth['percentage_art'] = ((score.art - prev_scores.art) / prev_scores.art) * 100
-                    else:
-                        growth['percentage_art'] = 0
-
-                    if prev_scores.sports != 0:
-                        growth['percentage_sports'] = ((score.sports - prev_scores.sports) / prev_scores.sports) * 100
-                    else:
-                        growth['percentage_sports'] = 0
-
-                    if prev_scores.academic != 0:
-                        growth['percentage_academic'] = ((score.academic - prev_scores.academic) / prev_scores.academic) * 100
-                    else:
-                        growth['percentage_academic'] = 0
-
-                    growth_data.append(growth)
-                    prev_scores = score
-
-            return growth_data
-
     def calculate_radar_chart_scores(scores):
         radar_chart_data = {}
         for score in scores:
@@ -579,25 +541,17 @@ def get_user_scores(request, user_id, semester):
     except Scores.DoesNotExist:
         return Response(status=status.HTTP_404_NOT_FOUND)
 
-    # Serialize all scores data
     serializer = ScoresSerializer(scores, many=True)
-
-    # Calculate percentage growth
-    growth_data = calculate_percentage_growth(scores, semester)
 
     # Calculate radar chart data
     radar_chart_data = calculate_radar_chart_scores(scores)
 
-    # Prepare data for bar graph (percentage growth for all semesters)
-    growth_data = calculate_percentage_growth(scores, semester)
     response_data = {
         'scores': serializer.data,
         'radar_chart': radar_chart_data,
-         'bar_graph': growth_data
     }
 
     return Response(response_data)
-
 
 
 def get_user_data(request, user_id):
@@ -617,7 +571,8 @@ def get_user_data(request, user_id):
         return JsonResponse({'user': user_data})
     except Users.DoesNotExist:
         return JsonResponse({'error': 'User does not exist'}, status=404)
-    
+
+
 @api_view(['GET'])
 def top_scores(request):
     if request.method == 'GET':
@@ -629,6 +584,7 @@ def top_scores(request):
 
         return Response(serializer.data)
 
+
 @api_view(['GET'])
 def student_scores(request, student_id):
     if request.method == 'GET':
@@ -637,7 +593,8 @@ def student_scores(request, student_id):
             student = Users.objects.get(id=student_id)
 
             # Get the student's score for semester 8
-            student_score = Scores.objects.filter(student=student, sem=8).first()
+            student_score = Scores.objects.filter(
+                student=student, sem=8).first()
 
             if student_score is None:
                 return Response({'detail': 'Student score for semester 8 not found'}, status=404)
@@ -648,7 +605,8 @@ def student_scores(request, student_id):
             return Response(serializer.data)
         except Users.DoesNotExist:
             raise Http404('Student does not exist')
-        
+
+
 @api_view(['GET'])
 def get_leader_board(request, student_id=None):
     if request.method == 'GET':
@@ -660,7 +618,8 @@ def get_leader_board(request, student_id=None):
                 student = Users.objects.get(id=student_id)
 
                 # Get the student's score for semester 8
-                student_score = Scores.objects.filter(student=student, sem=8).first()
+                student_score = Scores.objects.filter(
+                    student=student, sem=8).first()
 
                 if student_score is None:
                     return Response({'detail': 'Student score for semester 8 not found'}, status=404)
