@@ -8,12 +8,13 @@ user_api = [
 
 ]
 admin_api = [
-    path('admins/', views.admins, name='admins')
+    path('admins/', views.admins, name='admins'),
+    path('admins/user-stats/', views.user_stats, name='user_stats'),
 ]
 
 auth_api = [
     path('create-admin/', views.create_admin, name='create_admin'),
-    path('create-user/', views.create_user, name='create_user'),
+    path('admins/create-user/', views.create_user, name='create_user'),
     path('delete-user/<str:student_id>/',
          views.delete_user, name='delete_user'),
     path('delete-old-users/', views.delete_old_users, name='delete-old-users'),
@@ -45,15 +46,21 @@ notfication_api = [
     path('get-notifications/', views.get_all_notifications,
          name='get_all_notifications'),
 
-    path('create-notification/', views.create_notification,
+    path('admins/create-notification/', views.create_notification,
          name='create_notification'),
-    path('update-notification/<int:pk>/',
+    path('admins/update-notification/<int:pk>/',
          views.update_notification, name='update_notification'),
 ]
 
 scores_api = [
-    path('update-scores/', views.update_scores, name='update_scores'),
+    path('admins/update-scores/', views.update_scores, name='update_scores'),
+    path('user/get-user-scores/<int:user_id>/<int:semester>/', views.get_user_scores, name='get_user_scores'),
+    path('top-scores/', views.top_scores, name='top_scores'),
+    path('student-scores/<str:student_id>/', views.student_scores, name='student-scores'),
+    path('get-leader-board/<str:student_id>/', views.get_leader_board, name='get_leader_board'),
+
 ]
+
 
 urlpatterns = user_api + admin_api + auth_api + \
     post_api + \

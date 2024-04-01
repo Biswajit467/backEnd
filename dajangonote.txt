@@ -29,3 +29,7 @@ when you define somthing in your models files then you need to perform a migrati
 but if you have already things in your db and you just added that inyou django model then you need to make a fake migration that
 python manage.py makemigrations 
 python manage.py migrate --fake
+
+post things :
+python -m pip install Pillow      use this to install pillow for : 
+    img = models.ImageField(upload_to='post_images/')   to use ImageField we have to install this.
