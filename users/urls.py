@@ -10,6 +10,7 @@ user_api = [
 admin_api = [
     path('admins/', views.admins, name='admins'),
     path('admins/user-stats/', views.user_stats, name='user_stats'),
+    path('admins/users-by-branch/<str:branch>/<int:semester>/', views.users_by_branch_and_semester, name='users_by_branch_and_semester'),
 ]
 
 auth_api = [

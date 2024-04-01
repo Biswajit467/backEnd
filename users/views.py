@@ -64,6 +64,13 @@ def user_stats(request):
 
     return Response(data)
 
+@api_view(['GET'])
+def users_by_branch_and_semester(request, branch, semester):
+    users_by_branch_and_semester = Users.objects.filter(branch=branch, sem=semester, admin=False)
+    serialized_users_by_branch_and_semester = UsersSerializer(users_by_branch_and_semester, many=True)
+    
+    return Response(serialized_users_by_branch_and_semester.data)
+
 @api_view(['POST'])
 @csrf_exempt
 def create_admin(request):
