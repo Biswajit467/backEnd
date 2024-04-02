@@ -10,6 +10,7 @@ user_api = [
 admin_api = [
     path('admins/', views.admins, name='admins'),
     path('admins/user-stats/', views.user_stats, name='user_stats'),
+    path('admins/users-by-branch/<str:branch>/<int:semester>/', views.users_by_branch_and_semester, name='users_by_branch_and_semester'),
 ]
 
 auth_api = [
@@ -61,9 +62,14 @@ scores_api = [
 
 ]
 
+mongo_apis =[
+        path('insert-semester-marks/', views.insert_semester_marks, name='insert_semester_marks'),
+
+]
+
 
 urlpatterns = user_api + admin_api + auth_api + \
     post_api + \
-    scores_api + updation_api + notfication_api
+    scores_api + updation_api + notfication_api + mongo_apis
 
 urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
