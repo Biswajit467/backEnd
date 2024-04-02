@@ -22,6 +22,7 @@ from .models import Posts
 from django.shortcuts import get_object_or_404
 from django.conf import settings
 from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
+from major_project.mongo_utils import semester_marks_collection  # Import the collection
 
 
 # Create your views here.
@@ -705,3 +706,52 @@ def get_leader_board(request, student_id=None):
         response_data['top_scorers'] = top_scores_serializer.data
 
         return Response(response_data)
+    
+
+@api_view(['POST'])
+def insert_semester_marks(request):
+    if request.method == 'POST':
+        # Retrieve data from request body
+        data = request.data
+
+        # Ensure that required fields are present in the request data
+        required_fields = ['student_id', 'sem', 'branch', 'exam_type', 'subject_marks']
+        if not all(field in data for field in required_fields):
+            return JsonResponse({'error': 'Missing required fields'}, status=400)
+
+        # Insert the record into the collection
+        semester_marks_collection.insert_one(data)
+
+        return JsonResponse({'message': 'Record inserted successfully'}, status=201)
+    else:
+        return JsonResponse({'error': 'Method not allowed'}, status=405)
+
+@api_view(['POST'])
+def get_subject_marks(request):
+    if request.method == 'POST':
+        # Retrieve data from request body
+        data = request.data
+
+        # Ensure that required fields are present in the request data
+        required_fields = ['student_id', 'sem', 'branch']
+        if not all(field in data for field in required_fields):
+            return JsonResponse({'error': 'Missing required fields'}, status=400)
+
+        # Query MongoDB collection for subject marks
+        query = {
+            'student_id': data['student_id'],
+            'sem': data['sem'],
+            'branch': data['branch']
+        }
+
+        result = semester_marks_collection.find_one(query, {'_id': 0, 'subject_marks': 1})
+
+        if result:
+            subject_marks = result.get('subject_marks', {})
+            return JsonResponse({'subject_marks': subject_marks}, status=200)
+        else:
+            return JsonResponse({'error': 'No data found for the given student, sem, and branch'}, status=404)
+
+    else:
+        return JsonResponse({'error': 'Method not allowed'}, status=405)
+

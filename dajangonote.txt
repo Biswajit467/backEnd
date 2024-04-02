@@ -33,3 +33,6 @@ python manage.py migrate --fake
 post things :
 python -m pip install Pillow      use this to install pillow for : 
     img = models.ImageField(upload_to='post_images/')   to use ImageField we have to install this.
+
+pip install pymongo 
+pip freeze > requirements.txt => to rewrite the requirements.txt file 
