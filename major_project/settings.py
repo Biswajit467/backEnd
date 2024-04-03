@@ -85,16 +85,6 @@ DATABASES = {
         'PORT': '3306',
     }
 }
-
-# MongoDB Configuration
-MONGO_HOST = 'localhost'
-MONGO_PORT = 27017
-MONGO_DB_NAME = 'campus_canvas'
-
-# Connect to MongoDB
-mongo_client = pymongo.MongoClient(host=MONGO_HOST, port=MONGO_PORT)
-mongo_db = mongo_client[MONGO_DB_NAME]
-
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/5.0/howto/static-files/
 

@@ -719,10 +719,24 @@ def insert_semester_marks(request):
         if not all(field in data for field in required_fields):
             return JsonResponse({'error': 'Missing required fields'}, status=400)
 
-        # Insert the record into the collection
-        semester_marks_collection.insert_one(data)
+        # Check if data already exists for the provided combination
+        query = {
+            'student_id': data['student_id'],
+            'sem': data['sem'],
+            'branch': data['branch'],
+            'exam_type': data['exam_type']
+        }
+        existing_record = semester_marks_collection.find_one(query)
 
-        return JsonResponse({'message': 'Record inserted successfully'}, status=201)
+        if existing_record:
+            # Update the existing record
+            semester_marks_collection.update_one(query, {'$set': {'subject_marks': data['subject_marks']}})
+            return JsonResponse({'message': 'Record updated successfully'}, status=200)
+        else:
+            # Insert the record into the collection
+            semester_marks_collection.insert_one(data)
+            return JsonResponse({'message': 'Record inserted successfully'}, status=201)
+
     else:
         return JsonResponse({'error': 'Method not allowed'}, status=405)
 
@@ -741,7 +755,7 @@ def get_subject_marks(request):
         query = {
             'student_id': data['student_id'],
             'sem': data['sem'],
-            'branch': data['branch']
+            'branch': data['branch'],
         }
 
         result = semester_marks_collection.find_one(query, {'_id': 0, 'subject_marks': 1})
@@ -754,4 +768,32 @@ def get_subject_marks(request):
 
     else:
         return JsonResponse({'error': 'Method not allowed'}, status=405)
+
+    
+@api_view(['POST'])
+def get_records_by_student_id(request):
+    if request.method == 'POST':
+        # Retrieve student_id from request data
+        data = request.data
+        student_id = data.get('student_id')
+
+        if not student_id:
+            return JsonResponse({'error': 'Missing student_id field'}, status=400)
+
+        # Query MongoDB collection for records with the given student_id
+        query = {'student_id': student_id}
+        projection = {'_id': 0, 'sem': 1, 'exam_type': 1, 'subject_marks': 1}  # Include sem in projection
+        results = semester_marks_collection.find(query, projection)
+
+        # Convert MongoDB cursor to list of dictionaries
+        records = []
+        for record in results:
+            # Append the required fields to the list
+            records.append({'sem': record['sem'], 'exam_type': record['exam_type'], 'subject_marks': record['subject_marks']})
+
+        return JsonResponse({'records': records}, status=200)
+
+    else:
+        return JsonResponse({'error': 'Method not allowed'}, status=405)
+
 
