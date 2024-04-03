@@ -64,6 +64,8 @@ scores_api = [
 
 mongo_apis =[
         path('insert-semester-marks/', views.insert_semester_marks, name='insert_semester_marks'),
+        path('get-subject-marks/', views.get_subject_marks, name='get_subject_marks'),
+        path('get-records-by-student-id/', views.get_records_by_student_id, name='get_records_by_student_id'),
 
 ]
 
