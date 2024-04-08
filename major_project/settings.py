@@ -12,6 +12,7 @@ https://docs.djangoproject.com/en/5.0/ref/settings/
 
 from pathlib import Path
 import os
+import pymongo
 
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -95,7 +96,7 @@ DATABASES = {
         'ENGINE': 'django.db.backends.mysql',
         'NAME': 'campus_canvas_main', 
         'USER': 'root',  
-        'PASSWORD': 'Hrushi@1234#', 
+        'PASSWORD': 'biswajit123456789', 
         'HOST': 'localhost', 
         'PORT': '3306', 
     }

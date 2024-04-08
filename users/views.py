@@ -1,4 +1,5 @@
 from django.shortcuts import render
+from django.db import models
 from django.http import HttpResponse
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt, csrf_protect
@@ -9,7 +10,7 @@ from django.db import connection
 from django.contrib.auth.hashers import check_password
 import jwt
 from rest_framework.decorators import api_view
-from .serializers import UserUpdateSerializer, AdminUpdateSerializer, PostsSerializer, NotificationSerializer
+from .serializers import UserUpdateSerializer, AdminUpdateSerializer, PostsSerializer, NotificationSerializer, TopScoresSerializer, ScoresSerializer
 from rest_framework.response import Response
 from rest_framework import status
 from rest_framework import generics
@@ -22,6 +23,8 @@ from .models import Posts
 from django.shortcuts import get_object_or_404
 from django.conf import settings
 from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
+from django.core.files.storage import default_storage
+from django.core.files.base import ContentFile
 
 
 # Create your views here.
@@ -51,11 +54,13 @@ def check_db_connection(request):
         # If an exception occurs, return an error response
         return JsonResponse({'status': 'Database connection failed', 'error': str(e)}, status=500)
 
+
 @api_view(['GET'])
 def user_stats(request):
     total_records = Users.objects.filter(admin=False).count()
 
-    branches = Users.objects.filter(admin=False).values('branch').annotate(total_students=models.Count('branch'))
+    branches = Users.objects.filter(admin=False).values(
+        'branch').annotate(total_students=models.Count('branch'))
 
     data = {
         'total_records': total_records,
@@ -63,6 +68,7 @@ def user_stats(request):
     }
 
     return Response(data)
+
 
 @api_view(['POST'])
 @csrf_exempt
@@ -179,30 +185,6 @@ def logout(request):
     return response
 
 
-# @csrf_exempt
-# @api_view(['PATCH'])
-# def update_personal_info(request, pk):
-#     print('this is request.data:  ', request.data)
-#     try:
-#         user = Users.objects.get(pk=pk)
-#     except Users.DoesNotExist:
-#         return Response({'error': 'User not found'}, status=status.HTTP_404_NOT_FOUND)
-
-#     if request.method == 'PATCH':
-#         # Make a copy of request data to avoid modifying the original data
-#         data = request.data.copy()
-#         print("this is data data var in uddate_presonal_info: ",data)
-#         password = data.get('password')
-#         if password:
-#             data['password'] = make_password(password)  # Encrypt the password
-#         serializer = UserUpdateSerializer(user, data=data, partial=True)
-#         if serializer.is_valid():
-#             serializer.save()
-#             return Response(serializer.data)
-#         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-#     else:
-#         return Response({'error': 'Only PATCH method is allowed'}, status=status.HTTP_405_METHOD_NOT_ALLOWED)
-
 @csrf_exempt
 @api_view(['PATCH'])
 def update_personal_info(request, pk):
@@ -213,27 +195,36 @@ def update_personal_info(request, pk):
         return Response({'error': 'User not found'}, status=status.HTTP_404_NOT_FOUND)
 
     if request.method == 'PATCH':
-        # Make a copy of request data to avoid modifying the original data
-        data = request.data.copy()
-        print("this is data data var in update_personal_info: ", data)
+        # Check if 'img' key is in request.FILES
+        if 'img' in request.FILES:
+            image = request.FILES['img']  # Get the uploaded image file
+            # Generate new file name to avoid conflicts
 
-        # Check each field individually
-        if 'name' in data and not data['name']:  # Check if name is empty
-            data.pop('name')  # Remove name from data if it's empty
+            file_name = default_storage.get_available_name(
+                f"user_{user.id}_{image.name}")
+            # Save the image to the media folder
+            file_path = default_storage.save(
+                f"user_profile_image/{file_name}", ContentFile(image.read()))
+            # Get the URL of the saved image
+            image_url = default_storage.url(file_path)
 
-        if 'email' in data and not data['email']:  # Check if email is empty
-            data.pop('email')  # Remove email from data if it's empty
+            # Update the user's img field with the new image URL
+            user.img = image_url
 
-        if 'img' in data and not data['img']:  # Check if img is empty
-            data.pop('img')  # Remove img from data if it's empty
-        if 'password' in data and not data['password']:
-            data.pop('password')
+        # Create a new dictionary with only the fields you want to update
+        data_to_update = {}
+        for key, value in request.data.items():
+            if key in ['name', 'email', 'password']:
+                if value:  # Check if value is not empty
+                    data_to_update[key] = value
 
-        password = data.get('password')
+        password = data_to_update.get('password')
         if password:
-            data['password'] = make_password(password)  # Encrypt the password
+            data_to_update['password'] = make_password(
+                password)  # Encrypt the password
 
-        serializer = UserUpdateSerializer(user, data=data, partial=True)
+        serializer = UserUpdateSerializer(
+            user, data=data_to_update, partial=True)
         if serializer.is_valid():
             serializer.save()
             return Response(serializer.data)
@@ -370,10 +361,6 @@ def update_notification(request, pk):
         serializer.save()
         return Response(serializer.data, status=status.HTTP_200_OK)
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-   
-
-
 
 
 @api_view(['POST'])
@@ -571,53 +558,60 @@ def update_scores(request):
 
     return Response({'message': 'Scores updated successfully'}, status=status.HTTP_200_OK)
 
+
 @api_view(['GET'])
 def get_user_scores(request, user_id, semester):
     def calculate_percentage_growth(scores, current_sem):
-            growth_data = []
-            prev_scores = None
-            for score in scores:
-                if score.sem <= current_sem:
-                    if prev_scores is None:
-                        prev_scores = score
-                        continue
-
-                    growth = {}
-                    growth['semester'] = score.sem
-
-                    # Calculate percentage growth for each field
-                    if prev_scores.overall != 0:
-                        growth['percentage_overall'] = ((score.overall - prev_scores.overall) / prev_scores.overall) * 100
-                    else:
-                        growth['percentage_overall'] = 0
-                    if prev_scores.tech != 0:
-                        growth['percentage_tech'] = ((score.tech - prev_scores.tech) / prev_scores.tech) * 100
-                    else:
-                        growth['percentage_tech'] = 0
-                    if prev_scores.etc != 0:
-                        growth['percentage_etc'] = ((score.etc - prev_scores.etc) / prev_scores.etc) * 100
-                    else:
-                        growth['percentage_etc'] = 0
-
-                    if prev_scores.art != 0:
-                        growth['percentage_art'] = ((score.art - prev_scores.art) / prev_scores.art) * 100
-                    else:
-                        growth['percentage_art'] = 0
-
-                    if prev_scores.sports != 0:
-                        growth['percentage_sports'] = ((score.sports - prev_scores.sports) / prev_scores.sports) * 100
-                    else:
-                        growth['percentage_sports'] = 0
-
-                    if prev_scores.academic != 0:
-                        growth['percentage_academic'] = ((score.academic - prev_scores.academic) / prev_scores.academic) * 100
-                    else:
-                        growth['percentage_academic'] = 0
-
-                    growth_data.append(growth)
+        growth_data = []
+        prev_scores = None
+        for score in scores:
+            if score.sem <= current_sem:
+                if prev_scores is None:
                     prev_scores = score
+                    continue
 
-            return growth_data
+                growth = {}
+                growth['semester'] = score.sem
+
+                # Calculate percentage growth for each field
+                if prev_scores.overall != 0:
+                    growth['percentage_overall'] = (
+                        (score.overall - prev_scores.overall) / prev_scores.overall) * 100
+                else:
+                    growth['percentage_overall'] = 0
+                if prev_scores.tech != 0:
+                    growth['percentage_tech'] = (
+                        (score.tech - prev_scores.tech) / prev_scores.tech) * 100
+                else:
+                    growth['percentage_tech'] = 0
+                if prev_scores.etc != 0:
+                    growth['percentage_etc'] = (
+                        (score.etc - prev_scores.etc) / prev_scores.etc) * 100
+                else:
+                    growth['percentage_etc'] = 0
+
+                if prev_scores.art != 0:
+                    growth['percentage_art'] = (
+                        (score.art - prev_scores.art) / prev_scores.art) * 100
+                else:
+                    growth['percentage_art'] = 0
+
+                if prev_scores.sports != 0:
+                    growth['percentage_sports'] = (
+                        (score.sports - prev_scores.sports) / prev_scores.sports) * 100
+                else:
+                    growth['percentage_sports'] = 0
+
+                if prev_scores.academic != 0:
+                    growth['percentage_academic'] = (
+                        (score.academic - prev_scores.academic) / prev_scores.academic) * 100
+                else:
+                    growth['percentage_academic'] = 0
+
+                growth_data.append(growth)
+                prev_scores = score
+
+        return growth_data
 
     def calculate_radar_chart_scores(scores):
         radar_chart_data = {}
@@ -654,11 +648,10 @@ def get_user_scores(request, user_id, semester):
     response_data = {
         'scores': serializer.data,
         'radar_chart': radar_chart_data,
-         'bar_graph': growth_data
+        'bar_graph': growth_data
     }
 
     return Response(response_data)
-
 
 
 def get_user_data(request, user_id):
@@ -678,7 +671,8 @@ def get_user_data(request, user_id):
         return JsonResponse({'user': user_data})
     except Users.DoesNotExist:
         return JsonResponse({'error': 'User does not exist'}, status=404)
-    
+
+
 @api_view(['GET'])
 def top_scores(request):
     if request.method == 'GET':
@@ -690,6 +684,7 @@ def top_scores(request):
 
         return Response(serializer.data)
 
+
 @api_view(['GET'])
 def student_scores(request, student_id):
     if request.method == 'GET':
@@ -698,7 +693,8 @@ def student_scores(request, student_id):
             student = Users.objects.get(id=student_id)
 
             # Get the student's score for semester 8
-            student_score = Scores.objects.filter(student=student, sem=8).first()
+            student_score = Scores.objects.filter(
+                student=student, sem=8).first()
 
             if student_score is None:
                 return Response({'detail': 'Student score for semester 8 not found'}, status=404)
@@ -709,7 +705,8 @@ def student_scores(request, student_id):
             return Response(serializer.data)
         except Users.DoesNotExist:
             raise Http404('Student does not exist')
-        
+
+
 @api_view(['GET'])
 def get_leader_board(request, student_id=None):
     if request.method == 'GET':
@@ -721,7 +718,8 @@ def get_leader_board(request, student_id=None):
                 student = Users.objects.get(id=student_id)
 
                 # Get the student's score for semester 8
-                student_score = Scores.objects.filter(student=student, sem=8).first()
+                student_score = Scores.objects.filter(
+                    student=student, sem=8).first()
 
                 if student_score is None:
                     return Response({'detail': 'Student score for semester 8 not found'}, status=404)

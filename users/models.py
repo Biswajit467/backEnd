@@ -11,6 +11,7 @@ class Users(models.Model):
     name = models.CharField(max_length=200)
     sem = models.IntegerField()
     img = models.CharField(max_length=1000, null=True)
+
     admin = models.BooleanField(default=False)
     registration_number = models.CharField(
         max_length=255, default='0000000000')
@@ -25,12 +26,12 @@ class Users(models.Model):
 
 class Posts(models.Model):
     id = models.AutoField(primary_key=True)
-    title = models.CharField(max_length=255 , default='title')
+    title = models.CharField(max_length=255, default='title')
     # img = models.CharField(max_length=255 , default ='img')
     img = models.ImageField(upload_to='post_images/')
-    desc = models.CharField(max_length=10000 , default = 'desc')
+    desc = models.CharField(max_length=10000, default='desc')
     # date = models.DateField(auto_now_add=True )
-    date = models.DateTimeField(auto_now_add=True )
+    date = models.DateTimeField(auto_now_add=True)
     uid = models.ForeignKey(Users, on_delete=models.CASCADE)
     category = models.CharField(max_length=45, default=None, null=True)
 
