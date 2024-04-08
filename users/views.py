@@ -572,58 +572,6 @@ def update_scores(request):
 
 @api_view(['GET'])
 def get_user_scores(request, user_id, semester):
-    def calculate_percentage_growth(scores, current_sem):
-        growth_data = []
-        prev_scores = None
-        for score in scores:
-            if score.sem <= current_sem:
-                if prev_scores is None:
-                    prev_scores = score
-                    continue
-
-                growth = {}
-                growth['semester'] = score.sem
-
-                # Calculate percentage growth for each field
-                if prev_scores.overall != 0:
-                    growth['percentage_overall'] = (
-                        (score.overall - prev_scores.overall) / prev_scores.overall) * 100
-                else:
-                    growth['percentage_overall'] = 0
-                if prev_scores.tech != 0:
-                    growth['percentage_tech'] = (
-                        (score.tech - prev_scores.tech) / prev_scores.tech) * 100
-                else:
-                    growth['percentage_tech'] = 0
-                if prev_scores.etc != 0:
-                    growth['percentage_etc'] = (
-                        (score.etc - prev_scores.etc) / prev_scores.etc) * 100
-                else:
-                    growth['percentage_etc'] = 0
-
-                if prev_scores.art != 0:
-                    growth['percentage_art'] = (
-                        (score.art - prev_scores.art) / prev_scores.art) * 100
-                else:
-                    growth['percentage_art'] = 0
-
-                if prev_scores.sports != 0:
-                    growth['percentage_sports'] = (
-                        (score.sports - prev_scores.sports) / prev_scores.sports) * 100
-                else:
-                    growth['percentage_sports'] = 0
-
-                if prev_scores.academic != 0:
-                    growth['percentage_academic'] = (
-                        (score.academic - prev_scores.academic) / prev_scores.academic) * 100
-                else:
-                    growth['percentage_academic'] = 0
-
-                growth_data.append(growth)
-                prev_scores = score
-
-        return growth_data
-
     def calculate_radar_chart_scores(scores):
         radar_chart_data = {}
         for score in scores:
@@ -653,7 +601,6 @@ def get_user_scores(request, user_id, semester):
     response_data = {
         'scores': serializer.data,
         'radar_chart': radar_chart_data,
-        'bar_graph': growth_data
     }
 
     return Response(response_data)
@@ -743,7 +690,7 @@ def get_leader_board(request, student_id=None):
         response_data['top_scorers'] = top_scores_serializer.data
 
         return Response(response_data)
-    
+
 
 @api_view(['POST'])
 def insert_semester_marks(request):
@@ -752,7 +699,8 @@ def insert_semester_marks(request):
         data = request.data
 
         # Ensure that required fields are present in the request data
-        required_fields = ['student_id', 'sem', 'branch', 'exam_type', 'subject_marks']
+        required_fields = ['student_id', 'sem',
+                           'branch', 'exam_type', 'subject_marks']
         if not all(field in data for field in required_fields):
             return JsonResponse({'error': 'Missing required fields'}, status=400)
 
@@ -767,7 +715,8 @@ def insert_semester_marks(request):
 
         if existing_record:
             # Update the existing record
-            semester_marks_collection.update_one(query, {'$set': {'subject_marks': data['subject_marks']}})
+            semester_marks_collection.update_one(
+                query, {'$set': {'subject_marks': data['subject_marks']}})
             return JsonResponse({'message': 'Record updated successfully'}, status=200)
         else:
             # Insert the record into the collection
@@ -776,6 +725,7 @@ def insert_semester_marks(request):
 
     else:
         return JsonResponse({'error': 'Method not allowed'}, status=405)
+
 
 @api_view(['POST'])
 def get_subject_marks(request):
@@ -795,7 +745,8 @@ def get_subject_marks(request):
             'branch': data['branch'],
         }
 
-        result = semester_marks_collection.find_one(query, {'_id': 0, 'subject_marks': 1})
+        result = semester_marks_collection.find_one(
+            query, {'_id': 0, 'subject_marks': 1})
 
         if result:
             subject_marks = result.get('subject_marks', {})
@@ -806,7 +757,7 @@ def get_subject_marks(request):
     else:
         return JsonResponse({'error': 'Method not allowed'}, status=405)
 
-    
+
 @api_view(['POST'])
 def get_records_by_student_id(request):
     if request.method == 'POST':
@@ -819,18 +770,18 @@ def get_records_by_student_id(request):
 
         # Query MongoDB collection for records with the given student_id
         query = {'student_id': student_id}
-        projection = {'_id': 0, 'sem': 1, 'exam_type': 1, 'subject_marks': 1}  # Include sem in projection
+        projection = {'_id': 0, 'sem': 1, 'exam_type': 1,
+                      'subject_marks': 1}  # Include sem in projection
         results = semester_marks_collection.find(query, projection)
 
         # Convert MongoDB cursor to list of dictionaries
         records = []
         for record in results:
             # Append the required fields to the list
-            records.append({'sem': record['sem'], 'exam_type': record['exam_type'], 'subject_marks': record['subject_marks']})
+            records.append(
+                {'sem': record['sem'], 'exam_type': record['exam_type'], 'subject_marks': record['subject_marks']})
 
         return JsonResponse({'records': records}, status=200)
 
     else:
         return JsonResponse({'error': 'Method not allowed'}, status=405)
-
-
