@@ -1,7 +1,6 @@
 from django.shortcuts import render
 from django.db import models
-from django.http import HttpResponse
-from django.http import JsonResponse
+from django.http import HttpResponse, JsonResponse, Http404
 from django.views.decorators.csrf import csrf_exempt, csrf_protect
 from django.contrib.auth.hashers import make_password
 import json
@@ -10,7 +9,8 @@ from django.db import connection
 from django.contrib.auth.hashers import check_password
 import jwt
 from rest_framework.decorators import api_view
-from .serializers import UserUpdateSerializer, AdminUpdateSerializer, PostsSerializer, NotificationSerializer, TopScoresSerializer, ScoresSerializer
+from django.db import models
+from .serializers import UserUpdateSerializer, AdminUpdateSerializer, PostsSerializer, NotificationSerializer, ScoresSerializer, TopScoresSerializer, UsersSerializer, UsersSerializerforAdmin
 from rest_framework.response import Response
 from rest_framework import status
 from rest_framework import generics
@@ -23,6 +23,7 @@ from .models import Posts
 from django.shortcuts import get_object_or_404
 from django.conf import settings
 from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
+from major_project.mongo_utils import semester_marks_collection  # Import the collection
 from django.core.files.storage import default_storage
 from django.core.files.base import ContentFile
 
@@ -68,6 +69,16 @@ def user_stats(request):
     }
 
     return Response(data)
+
+
+@api_view(['GET'])
+def users_by_branch_and_semester(request, branch, semester):
+    users_by_branch_and_semester = Users.objects.filter(
+        branch=branch, sem=semester, admin=False)
+    serialized_users_by_branch_and_semester = UsersSerializerforAdmin(
+        users_by_branch_and_semester, many=True)
+
+    return Response(serialized_users_by_branch_and_semester.data)
 
 
 @api_view(['POST'])
@@ -634,17 +645,11 @@ def get_user_scores(request, user_id, semester):
     except Scores.DoesNotExist:
         return Response(status=status.HTTP_404_NOT_FOUND)
 
-    # Serialize all scores data
     serializer = ScoresSerializer(scores, many=True)
-
-    # Calculate percentage growth
-    growth_data = calculate_percentage_growth(scores, semester)
 
     # Calculate radar chart data
     radar_chart_data = calculate_radar_chart_scores(scores)
 
-    # Prepare data for bar graph (percentage growth for all semesters)
-    growth_data = calculate_percentage_growth(scores, semester)
     response_data = {
         'scores': serializer.data,
         'radar_chart': radar_chart_data,
@@ -738,3 +743,94 @@ def get_leader_board(request, student_id=None):
         response_data['top_scorers'] = top_scores_serializer.data
 
         return Response(response_data)
+    
+
+@api_view(['POST'])
+def insert_semester_marks(request):
+    if request.method == 'POST':
+        # Retrieve data from request body
+        data = request.data
+
+        # Ensure that required fields are present in the request data
+        required_fields = ['student_id', 'sem', 'branch', 'exam_type', 'subject_marks']
+        if not all(field in data for field in required_fields):
+            return JsonResponse({'error': 'Missing required fields'}, status=400)
+
+        # Check if data already exists for the provided combination
+        query = {
+            'student_id': data['student_id'],
+            'sem': data['sem'],
+            'branch': data['branch'],
+            'exam_type': data['exam_type']
+        }
+        existing_record = semester_marks_collection.find_one(query)
+
+        if existing_record:
+            # Update the existing record
+            semester_marks_collection.update_one(query, {'$set': {'subject_marks': data['subject_marks']}})
+            return JsonResponse({'message': 'Record updated successfully'}, status=200)
+        else:
+            # Insert the record into the collection
+            semester_marks_collection.insert_one(data)
+            return JsonResponse({'message': 'Record inserted successfully'}, status=201)
+
+    else:
+        return JsonResponse({'error': 'Method not allowed'}, status=405)
+
+@api_view(['POST'])
+def get_subject_marks(request):
+    if request.method == 'POST':
+        # Retrieve data from request body
+        data = request.data
+
+        # Ensure that required fields are present in the request data
+        required_fields = ['student_id', 'sem', 'branch']
+        if not all(field in data for field in required_fields):
+            return JsonResponse({'error': 'Missing required fields'}, status=400)
+
+        # Query MongoDB collection for subject marks
+        query = {
+            'student_id': data['student_id'],
+            'sem': data['sem'],
+            'branch': data['branch'],
+        }
+
+        result = semester_marks_collection.find_one(query, {'_id': 0, 'subject_marks': 1})
+
+        if result:
+            subject_marks = result.get('subject_marks', {})
+            return JsonResponse({'subject_marks': subject_marks}, status=200)
+        else:
+            return JsonResponse({'error': 'No data found for the given student, sem, and branch'}, status=404)
+
+    else:
+        return JsonResponse({'error': 'Method not allowed'}, status=405)
+
+    
+@api_view(['POST'])
+def get_records_by_student_id(request):
+    if request.method == 'POST':
+        # Retrieve student_id from request data
+        data = request.data
+        student_id = data.get('student_id')
+
+        if not student_id:
+            return JsonResponse({'error': 'Missing student_id field'}, status=400)
+
+        # Query MongoDB collection for records with the given student_id
+        query = {'student_id': student_id}
+        projection = {'_id': 0, 'sem': 1, 'exam_type': 1, 'subject_marks': 1}  # Include sem in projection
+        results = semester_marks_collection.find(query, projection)
+
+        # Convert MongoDB cursor to list of dictionaries
+        records = []
+        for record in results:
+            # Append the required fields to the list
+            records.append({'sem': record['sem'], 'exam_type': record['exam_type'], 'subject_marks': record['subject_marks']})
+
+        return JsonResponse({'records': records}, status=200)
+
+    else:
+        return JsonResponse({'error': 'Method not allowed'}, status=405)
+
+
